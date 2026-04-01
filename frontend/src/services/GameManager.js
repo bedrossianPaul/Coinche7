@@ -1,151 +1,92 @@
-import { useAuth } from "./useAuth";
-
-const PHASES = {
-    JOINING: 'JOINING',
-    GAME_START: 'GAME_START',
-    SHUFFLE_CARDS: 'SHUFFLE_CARDS',
-    DEALING_CARDS: 'DEALING_CARDS',
-    AUCTIONS: 'AUCTIONS',
-};
+import {useAuth} from "../useAuth";
 
 class GameManager {
-    phase = PHASES.JOINING;
-    currentPlayer = null;
-    players = [];
-    cards = [];
-    remainingTime = null;
-    currentAuction = null;
-
-    #iam;
-    #token;
-    #webSocketService;
-    #phaseChangeListeners = new Set();
-    #requestListeners = new Set();
-
     constructor(url) {
-        this.phase = PHASES.JOINING;
-        this.#iam = useAuth().user.value;
-        this.#token = useAuth().token.value;
-        this.#webSocketService = new WebSocket(`ws://${url}`);
-        this.#webSocketService.send(JSON.stringify({
-            type: 'JOIN',
-            data: {
-                token: this.#token,
-                user: this.#iam,
+        this.metastate = null;
+        this.players = {
+            NORTH: null,
+            EAST: null,
+            SOUTH: null,
+            WEST: null,
+        };
+        this.state = {
+            current_trick: null,
+            last_trick: null,
+            player_turn: null,
+            bid: null,
+            score: (0, 0),
+        }
+        this.tunnel_url = url;
+        this.me = useAuth().user;
+    }
+
+    messageSerializer(type, payload) {
+        return JSON.stringify({ type, payload });
+    }
+
+    messageDeserializer(message) {
+        return JSON.parse(message);
+    }
+
+    _updateState_(newState) {
+        this.state = newState;
+    }
+
+    _handle_request_(request) {
+        console.log(`Received request from server: ${request}`);
+        return;
+    }
+
+    _handle_info_(payload) {
+        (info, time) = payload;
+        console.log(`Received info from server: ${info} at ${time}`);
+        return;
+    }
+
+    _handle_error_(payload) {        
+        console.error(`Error from server: ${payload}`);
+        return;
+    }
+
+    async connect() {
+        this.socket = new WebSocket(this.tunnel_url);
+
+        // Ask the server to connect us as soon as the socket is open
+        this.socket.onopen = () => {
+            this.socket.send(this.sendConnect());
+        };
+
+        // Handle incoming messages from the server
+        this.socket.onmessage = (event) => {
+            const {type, payload} = this.messageDeserializer(event.data);
+            switch (type) {
+                case "STATE":
+                    this._updateState_(payload);
+                    break;
+                case "REQUEST":
+                    this._handle_request_(payload);
+                    break;
+                case "INFO":
+                    this._handle_info_(payload);
+                    break;
+                case "ERROR":
+                    this._handle_error_(payload);
+                    break;
+                default:
+                    console.warn(`Unknown message type: ${type}`);
             }
-        }));
-    }
-
-    init() {
-        this.#webSocketService.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            this.#handleWSMessage(message);
         };
     }
 
-    onPhaseChange(callback) {
-        if (typeof callback !== 'function') {
-            return () => {};
-        }
-
-        this.#phaseChangeListeners.add(callback);
-        return () => {
-            this.#phaseChangeListeners.delete(callback);
-        };
+    sendAction(card_code) {
+        this.socket.send(this.messageSerializer("ACTION", { card: card_code }));
     }
 
-    onRequest(callback) {
-        if (typeof callback !== 'function') {
-            return () => {};
-        }
-
-        this.#requestListeners.add(callback);
-        return () => {
-            this.#requestListeners.delete(callback);
-        };
+    sendBid(bid) {
+        this.socket.send(this.messageSerializer("BID", { bid }));
     }
 
-    sendAuction(auction){
-        this.#webSocketService.send(JSON.stringify({
-            type: 'AUCTION',
-            data: {
-                auction,
-                token: this.#token,
-                user: this.#iam,
-            }
-        }));
-    }
-
-    #notifyPhaseChange() {
-        this.#phaseChangeListeners.forEach((listener) => listener());
-    }
-
-    #notifyRequest() {
-        this.#requestListeners.forEach((listener) => listener());
-    }
-
-    #handleWSMessage(message) {
-        switch (message.type) {
-            case 'INFO':
-                this.#handleInfoMessage(message.data);
-                break;
-            case 'REQUEST':
-                this.#handleRequestMessage(message.data);
-                break;
-            case 'ERROR':
-                console.error(message.data);
-                break;
-            default:
-                console.warn('Unknown message type:', message.type);
-        }
-    }
-
-    #handleInfoMessage(data) {
-        let hasPhaseChanged = false;
-
-        switch (data.infoType) {
-            // Serveur is shuffling the cards
-            case 'GAME_START':
-                this.phase = PHASES.GAME_START;
-                this.users = data.body.users;
-                hasPhaseChanged = true;
-                break;
-            case 'SHUFFLE_CARDS':
-                this.phase = PHASES.SHUFFLE_CARDS;
-                hasPhaseChanged = true;
-                break;
-            // Serveur is dealing the cards
-            case 'DEALING_CARDS':
-                this.phase = PHASES.DEALING_CARDS;
-                this.cards = data.body.cards;
-                hasPhaseChanged = true;
-                break;
-            case 'AUCTIONS':
-                this.phase = PHASES.AUCTIONS;
-                this.user = data.body.user;
-                this.remainingTime = data.body.remainingTime;
-                hasPhaseChanged = true;
-                break;
-            case 'AUCTION_UPDATE':
-                this.currentAuction = data.body.auction;
-                break;
-            default:
-                console.warn('Unknown info type:', data.infoType);
-        }
-
-        if (hasPhaseChanged) {
-            this.#notifyPhaseChange();
-        }
-    }
-
-    #handleRequestMessage(data){
-        switch (data.requestType) {
-            case 'AUCTION':
-                this.currentAuction = data.body.auction;
-                this.#notifyRequest();
-                break;
-            default:
-                console.warn('Unknown request type:', data.requestType);
-        }
+    sendConnect() {
+        this.socket.send(this.messageSerializer("CONNECT", { user: this.me }));
     }
 }
