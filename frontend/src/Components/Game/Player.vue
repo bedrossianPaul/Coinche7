@@ -13,7 +13,7 @@
             </div>
             <div class="w-26 h-12 bg-[rgba(255,255,255,0.3)] flex flex-col gap-1 justify-end rounded-xl px-2 py-1 relative -left-6">
                 <!--Player name-->
-                <div class="text-sm font-bold w-full text-right truncate">{{ player.pseudo }}</div>
+                <div class="text-sm font-bold w-full text-right truncate">{{ player.name }}</div>
                 <!--Player score-->
                 <div class="text-xs font-bold w-full text-right">{{ player.elo }}</div>
         
@@ -22,14 +22,14 @@
         </div>
         <div class="relative flex justify-between items-center -left-6">
           <div class="relative">
-            <div v-if="isFirst" class="relative left-16 rounded-full w-6 h-6 shadow-md">
+            <div v-if="player.is_first" class="relative left-16 rounded-full w-6 h-6 shadow-md">
                 <img src="/icons/first_player.png" alt="First" class="h-full w-full object-cover">
             </div>
           </div>
-            <div v-if="annonce" class="relative mr-0">
+            <div v-if="game_manager.gameStatus.bid" class="relative mr-0">
               <div class="pointer-events-none absolute -inset-1 rounded-md bg-white/20 blur-sm ring-1 ring-white/70 shadow-lg animate-pulse"></div>
               <div class="relative rounded-md bg-gray-200/40 px-2 py-1 text-sm font-bold" :class="annonceTextColorClass">
-                {{ annonce.points }} {{ annonceTypeSymbol }}
+                {{ game_manager.gameStatus.bid.points }} {{ annonceTypeSymbol }}
               </div>
             </div>
         </div>
@@ -50,18 +50,14 @@ export default {
       type: Object,
       required: true
     },
-    isFirst: {
-      type: Boolean,
-      default: false
-    },
-    annonce: {
+    game_manager: {
       type: Object,
-      default: () => null
+      required: true
     }
   },
   computed: {
     annonceSuitKey() {
-      const rawType = this.annonce?.type
+      const rawType = this.game_manager.gameStatus.bid?.type
 
       if (!rawType) {
         return null

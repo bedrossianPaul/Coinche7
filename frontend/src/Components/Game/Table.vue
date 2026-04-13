@@ -1,6 +1,6 @@
 <template>
     <div class="relative w-full h-full">
-        <div class="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/3 -translate-y-1/3">
+        <div class="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/3 -translate-y-1/3" v-if="gameManager.gameStatus.current_trick">
             <div
                 v-for="(trickCard, index) in displayedTrickCards"
                 :key="`${trickCard.playerIndex}-${trickCard.value}-${index}`"
@@ -12,17 +12,17 @@
         </div>
         <div class="absolute top-2 left-2">
             <div class="flex gap-3 items-end">
-                <div v-if="score" class=" bg-gray-200/40 px-4 py-2 rounded-md text-sm font-bold">
+                <div v-if="gameManager.gameStatus.score" class=" bg-gray-200/40 px-4 py-2 rounded-md text-sm font-bold">
                     <div class="flex items-center gap-3">
                         <div class="flex flex-col items-start">
-                            <div class="text-sm">Nous: {{ score.us }} </div>
-                            <div class="text-sm">Eux: {{ score.them }} </div>
+                            <div class="text-sm">Nous: {{ gameManager.gameStatus.score.us }} </div>
+                            <div class="text-sm">Eux: {{ gameManager.gameStatus.score.them }} </div>
                         </div>
         
                     </div>
                 </div>
                 <!-- Last Trick Button -->
-                <div class="relative">
+                <div class="relative" v-if="gameManager.gameStatus.last_trick">
                     <button
                         type="button"
                         class="h-9 w-9 cursor-pointer"
@@ -67,20 +67,20 @@
         </Dialog>
 
         <!-- Player Positions -->
-        <div v-if="players[0]" class="absolute top-2 left-3/4 -translate-x-1/2">
-            <Player :is-first="fst_player === 0" :player="players[0]" />
+        <div v-if="gameManager.gameStatus.players.NORTH" class="absolute top-2 left-3/4 -translate-x-1/2">
+            <Player :player="gameManager.gameStatus.players.NORTH" :game_manager="gameManager"/>
         </div>
 
-        <div v-if="players[1]" class="absolute top-3/4 right-1 -translate-y-1/2">
-            <Player :is-first="fst_player === 1" :player="players[1]" />
+        <div v-if="gameManager.gameStatus.players.EAST" class="absolute top-3/4 right-1 -translate-y-1/2">
+            <Player :player="gameManager.gameStatus.players.EAST" :game_manager="gameManager"/>
         </div>
 
-        <div v-if="players[2]" class="absolute bottom-2 left-1/4 -translate-x-1/2">
-            <Player :is-first="fst_player === 2" :annonce="{points:120, type:'S'}" :player="players[2]" />
+        <div v-if="gameManager.gameStatus.players.SOUTH" class="absolute bottom-2 left-1/4 -translate-x-1/2">
+            <Player :player="gameManager.gameStatus.players.SOUTH" :game_manager="gameManager"/>
         </div>
 
-        <div v-if="players[3]" class="absolute top-1/4 left-1 -translate-y-1/2">
-            <Player :is-first="fst_player === 3" :player="players[3]" />
+        <div v-if="gameManager.gameStatus.players.WEST" class="absolute top-1/4 left-1 -translate-y-1/2">
+            <Player :player="gameManager.gameStatus.players.WEST" :game_manager="gameManager"/>
         </div>
     </div>
 </template>
@@ -107,40 +107,23 @@ export default {
     },
     data() {
         return {
-            fst_player: 0,
             isLastTrickModalOpen: false
         }
     },
     props: {
-        players: {
-            type: Array,
+        gameManager: {
+            type: Object,
             required: true
         },
-        trickCards: {
-            type: Array,
-            default: () => [{ playerIndex: 3, value: 'AH' }, { playerIndex: 2, value: '10D' }, { playerIndex: 1, value: 'KD' }, { playerIndex: 0, value: 'QH' }]// Example cards for testing
-        },
-        lastTrickCards: {
-            type: Array,
-            default: () => [{ playerIndex: 3, value: 'AH' }, { playerIndex: 2, value: '10D' }, { playerIndex: 1, value: 'KD' }, { playerIndex: 0, value: 'QH' }]// Example cards for testing
-        },
-        annonce: {
-            type: Object,
-            default: () => null
-        },
-        score: {
-            type: Object,
-            default: () => ({ us: 0, them: 0 })
-        }
     },
     computed: {
         displayedTrickCards() {
-            return this.trickCards
+            return this.gameManager.gameStatus.current_trick
                 .slice(0, 4)
                 .filter((card) => card && typeof card.value === 'string' && Number.isInteger(card.playerIndex))
         },
         displayedLastTrickCards() {
-            return this.lastTrickCards
+            return this.gameManager.gameStatus.last_trick
                 .slice(0, 4)
                 .filter((card) => card && typeof card.value === 'string' && Number.isInteger(card.playerIndex))
         }

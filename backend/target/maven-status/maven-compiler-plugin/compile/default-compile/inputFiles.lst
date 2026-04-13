@@ -8,3 +8,6 @@
 /app/src/main/java/coinche7/repository/UserRepository.java
 /app/src/main/java/coinche7/security/AuthTokenFilter.java
 /app/src/main/java/coinche7/services/TokenService.java
+/app/src/main/java/coinche7/websocket/GameConsoleRunner.java
+/app/src/main/java/coinche7/websocket/GameWebSocketHandler.java
+/app/src/main/java/coinche7/websocket/WebSocketConfig.java

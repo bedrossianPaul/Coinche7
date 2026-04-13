@@ -1,23 +1,21 @@
-import {useAuth} from "../useAuth";
+import {useAuth} from "./useAuth";
 
 class GameManager {
     constructor(url) {
-        this.metastate = null;
-        this.players = {
-            NORTH: null,
-            EAST: null,
-            SOUTH: null,
-            WEST: null,
-        };
-        this.state = {
-            current_trick: null,
-            last_trick: null,
-            player_turn: null,
-            bid: null,
-            score: (0, 0),
-        }
+        this.gameStatus = null;
         this.tunnel_url = url;
-        this.me = useAuth().user;
+        this.me = useAuth().user.value;
+        this.connected = false;
+        this.action = null;
+    }
+
+    get_my_card() {
+        for (const player of Object.values(this.gameStatus.players)) {
+            if (player && player.id === this.me.id) {
+                return player.hand;
+            }
+        }
+        return [];
     }
 
     messageSerializer(type, payload) {
@@ -29,17 +27,25 @@ class GameManager {
     }
 
     _updateState_(newState) {
-        this.state = newState;
+        this.gameStatus = newState;
+        console.log(`State updated: ${JSON.stringify(this.gameStatus)}`);
     }
 
     _handle_request_(request) {
-        console.log(`Received request from server: ${request}`);
+        console.log(`Received request from server: ${JSON.stringify(request)}`);
+        switch (request.action) {
+            case "BID":
+                this.action = "BID";
+                break;
+            default:
+                console.warn(`Unknown request action: ${request.action}`);
+        }
         return;
     }
 
     _handle_info_(payload) {
-        (info, time) = payload;
-        console.log(`Received info from server: ${info} at ${time}`);
+        
+        console.log(`Received info from server: ${payload}`);
         return;
     }
 
@@ -50,10 +56,12 @@ class GameManager {
 
     async connect() {
         this.socket = new WebSocket(this.tunnel_url);
+        this.isConnected = true;
 
         // Ask the server to connect us as soon as the socket is open
         this.socket.onopen = () => {
             this.socket.send(this.sendConnect());
+            console.log("WebSocket connection established and CONNECT message sent.");
         };
 
         // Handle incoming messages from the server
@@ -83,10 +91,12 @@ class GameManager {
     }
 
     sendBid(bid) {
-        this.socket.send(this.messageSerializer("BID", { bid }));
+        this.socket.send(this.messageSerializer("BID", bid));
     }
 
     sendConnect() {
-        this.socket.send(this.messageSerializer("CONNECT", { user: this.me }));
+        return this.messageSerializer("CONNECT", { user: this.me });
     }
 }
+
+export default GameManager;

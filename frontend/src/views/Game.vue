@@ -1,16 +1,21 @@
 <template>
-  <div 
-    class="relative text-center h-[calc(100vh-65px)] bg-cover bg-center bg-no-repeat lg:max-w-1/2 mx-auto rounded-t-2xl"
-    style="background-image: url('/game_table.jpg');"
-  >
-    <GlobalMessage ref="globalMessage" />
-    <Annonce ref="annonce" />
-
-    <div class="h-2/3 w-full p-1">
-      <Table :players="players" :score="score"/>
+  <div>
+    <div v-if="gameManager && gameManager.isConnected && gameManager.gameStatus"
+      class="relative text-center h-[calc(100vh-65px)] bg-cover bg-center bg-no-repeat lg:max-w-1/2 mx-auto rounded-t-2xl"
+      style="background-image: url('/game_table.jpg');"
+    >
+      <GlobalMessage ref="globalMessage" />
+      <Annonce ref="annonce" :game_manager="gameManager" />
+  
+      <div class="h-2/3 w-full p-1">
+        <Table :game-manager="gameManager"/>
+      </div>
+      <div class="h-1/3 w-full p-1" v-if="gameManager.get_my_card().length > 0 && gameManager.gameStatus.bid">
+        <PlayerHand :cards="gameManager.get_my_card()" :trump="gameManager.gameStatus.bid.trump"/>
+      </div>
     </div>
-    <div class="h-1/3 w-full p-1">
-      <PlayerHand :cards="playerHand" trump="H"/>
+    <div v-else class="flex items-center justify-center h-screen">
+      <p class="text-2xl text-gray-500">Connexion au serveur de jeu...</p>
     </div>
   </div>
 
@@ -22,27 +27,18 @@ import PlayerHand from '../Components/Game/PlayerHand.vue';
 import GlobalMessage from '../Components/GlobalMessage.vue';
 import Annonce from '../Components/Game/Annonce.vue';
 import { useCard } from '../services/useCard.js';
+import GameManager from '../services/GameManager.js';
 
 export default {
   name: 'Game',
   data() {
     return {
-      players: [
-        { pseudo: 'Player1', elo: 1500 },
-        { pseudo: 'Player2', elo: 1400 },
-        { pseudo: 'Player3', elo: 1300 },
-        { pseudo: 'Player4', elo: 1200 }
-      ],
-      score: { us: 0, them: 0 },
-      playerHand: ['AH', '10H', 'JH', 'QH', '10S', 'KS', 'QS'],
-      annonce: {points: 100, type: 'H'}
+      gameManager: null,
     }
   },
   mounted() {
-    this.$refs.globalMessage.show('Bienvenue !', 2000, '#ffcc00');
-    this.$refs.globalMessage.show('Annonces !', 2000, '#00ccff');
-    this.openAnnonceModal(this.annonce)
-    useCard().setupTrump('H');
+    this.gameManager = new GameManager('ws://localhost:8080/ws/game');
+    this.gameManager.connect();
 
   },
   methods: {

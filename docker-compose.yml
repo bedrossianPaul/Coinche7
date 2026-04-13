@@ -23,6 +23,8 @@ services:
     container_name: coinche7-backend
     restart: unless-stopped
     working_dir: /app
+    stdin_open: true
+    tty: true
     command: mvn spring-boot:run
     volumes:
       - ./backend:/app

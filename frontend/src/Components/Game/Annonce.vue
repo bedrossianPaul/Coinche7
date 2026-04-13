@@ -1,119 +1,103 @@
 <template>
   <Dialog
-    v-model:visible="isOpen"
+    :visible="isVisible"
     modal
     :closable="false"
     :draggable="false"
     :style="{ width: '28rem', maxWidth: '95vw' }"
-    :header="dialogTitle"
+    header="Annonce"
   >
     <div class="flex flex-col gap-4">
-      <p class="text-sm text-slate-600">{{ dialogDescription }}</p>
+      <p class="text-sm text-slate-600">Fais ton annonce pour ce tour (contrat, coinche/surcoinche ou passe).</p>
 
-      <template v-if="mode === 'DEPART'">
-        <div v-if="previousAnnonce" class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left">
-          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Annonce précédente</div>
+      <div v-if="currentBid" class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left">
+          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dernier contrat le plus haut</div>
           <div class="flex items-center gap-2 text-sm font-bold text-slate-800">
-            <template v-if="typeInfo(previousAnnonce.type)">
-              <span>{{ previousAnnonce.points }}</span>
+            <template v-if="typeInfo(currentBidType)">
+              <span>{{ currentBidPoints }}</span>
               <span
                 class="flex items-center gap-1 rounded px-1.5 py-0.5 text-base font-black"
-                :class="typeInfo(previousAnnonce.type).colorClass"
+                :class="typeInfo(currentBidType).colorClass"
               >
-                {{ typeInfo(previousAnnonce.type).symbol }}
-                {{ typeInfo(previousAnnonce.type).short }}
+                {{ typeInfo(currentBidType).symbol }}
+                {{ typeInfo(currentBidType).short }}
               </span>
             </template>
             <template v-else>{{ previousAnnonceText }}</template>
           </div>
-        </div>
+      </div>
 
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            class="rounded-md border px-2 py-2 text-sm font-semibold"
-            :class="depart.actionType === 'ANNOUNCE' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'"
-            @click="depart.actionType = 'ANNOUNCE'"
-          >
-            Annoncer
-          </button>
+      <div class="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          class="rounded-md border px-2 py-2 text-sm font-semibold"
+          :class="[
+            form.actionType === 'ANNOUNCE' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700',
+            !canAnnounce ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100'
+          ]"
+          :disabled="!canAnnounce"
+          @click="selectAction('ANNOUNCE')"
+        >
+          Annoncer
+        </button>
 
-          <button
-            type="button"
-            class="rounded-md border px-2 py-2 text-sm font-semibold"
-            :class="[
-              depart.actionType === 'COINCHE' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700',
-              !canCoinche ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100'
-            ]"
-            :disabled="!canCoinche"
-            @click="depart.actionType = 'COINCHE'"
-          >
-            Coincher
-          </button>
+        <button
+          type="button"
+          class="rounded-md border px-2 py-2 text-sm font-semibold"
+          :class="[
+            form.actionType === 'COINCHE' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700',
+            !canCoinche ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100'
+          ]"
+          :disabled="!canCoinche"
+          @click="selectAction('COINCHE')"
+        >
+          Coincher
+        </button>
 
-          <button
-            type="button"
-            class="rounded-md border px-2 py-2 text-sm font-semibold"
-            :class="[
-              depart.actionType === 'SURCOINCHE' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700',
-              !canSurcoinche ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100'
-            ]"
-            :disabled="!canSurcoinche"
-            @click="depart.actionType = 'SURCOINCHE'"
-          >
-            Surcoincher
-          </button>
-        </div>
+        <button
+          type="button"
+          class="rounded-md border px-2 py-2 text-sm font-semibold"
+          :class="[
+            form.actionType === 'SURCOINCHE' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700',
+            !canSurcoinche ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100'
+          ]"
+          :disabled="!canSurcoinche"
+          @click="selectAction('SURCOINCHE')"
+        >
+          Surcoincher
+        </button>
+      </div>
 
-        <div :class="depart.actionType !== 'ANNOUNCE' ? 'opacity-40 pointer-events-none' : ''" class="flex flex-col gap-3">
-          <BidPointsInput
-            v-model="depart.points"
-            :min="minBidPoints"
-            :max="maxBidPoints"
-            :step="10"
-          />
+      <div :class="form.actionType !== 'ANNOUNCE' || !canAnnounce ? 'opacity-40 pointer-events-none' : ''" class="flex flex-col gap-3">
+        <BidPointsInput
+          v-model="form.points"
+          :min="minBidPoints"
+          :max="maxBidPoints"
+          :step="10"
+        />
 
-          <div class="flex flex-col gap-1">
-            <span class="text-sm font-semibold text-slate-700">Atout</span>
-            <div class="grid grid-cols-3 gap-2">
-              <button
-                v-for="t in availableTypes"
-                :key="t.value"
-                type="button"
-                class="flex items-center justify-center gap-1 rounded-md border px-2 py-2 text-sm font-bold transition-colors"
-                :class="[
-                  depart.type === t.value
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : `border-slate-200 bg-white hover:bg-slate-50 ${t.colorClass}`
-                ]"
-                @click="depart.type = t.value"
-              >
-                <span>{{ t.symbol }}</span>
-                <span class="text-xs font-semibold">{{ t.short }}</span>
-              </button>
-            </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-sm font-semibold text-slate-700">Atout</span>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              v-for="t in availableTypes"
+              :key="t.value"
+              type="button"
+              class="flex items-center justify-center gap-1 rounded-md border px-2 py-2 text-sm font-bold transition-colors"
+              :class="[
+                form.type === t.value
+                  ? 'border-slate-900 bg-slate-900 text-white'
+                  : `border-slate-200 bg-white hover:bg-slate-50 ${t.colorClass}`
+              ]"
+              @click="form.type = t.value"
+            >
+              <span>{{ t.symbol }}</span>
+              <span class="text-xs font-semibold">{{ t.short }}</span>
+            </button>
           </div>
         </div>
-      </template>
+      </div>
 
-      <template v-else-if="mode === 'IN_GAME'">
-        <label class="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-          Annonce en jeu
-          <select v-model="inGame.annonce" class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium">
-            <option v-for="value in availableInGameAnnouncements" :key="value" :value="value">{{ value }}</option>
-          </select>
-        </label>
-      </template>
-
-      <template v-else-if="mode === 'COUNTER'">
-        <label class="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-          Type de contre
-          <select v-model="counter.type" class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium">
-            <option value="COINCHE">Coinche</option>
-            <option value="SURCOINCHE">Surcoinche</option>
-          </select>
-        </label>
-      </template>
     </div>
 
     <template #footer>
@@ -128,6 +112,8 @@
         <button
           type="button"
           class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+          :disabled="!canSubmit"
+          :class="!canSubmit ? 'cursor-not-allowed opacity-40' : ''"
           @click="submitAnnonce"
         >
           Valider l'annonce
@@ -147,27 +133,20 @@ export default {
     Dialog,
     BidPointsInput
   },
+  props: {
+    game_manager: {
+      type: Object,
+      required: true
+    }
+  },
   data() {
     return {
-      isOpen: false,
-      mode: 'DEPART',
-      resolver: null,
-      depart: {
+      form: {
         points: 80,
         type: 'S',
         actionType: 'ANNOUNCE'
       },
-      inGame: {
-        annonce: 'Belote'
-      },
-      counter: {
-        type: 'COINCHE'
-      },
-      minBidPoints: 80,
       maxBidPoints: 500,
-      canCoinche: false,
-      canSurcoinche: false,
-      previousAnnonce: null,
       availableTypes: [
         { value: 'S',  symbol: '♠', short: 'Pique',     colorClass: 'text-slate-800' },
         { value: 'H',  symbol: '♥', short: 'Cœur',      colorClass: 'text-red-600'   },
@@ -175,40 +154,73 @@ export default {
         { value: 'C',  symbol: '♣', short: 'Trèfle',    colorClass: 'text-slate-800' },
         { value: 'SA', symbol: '—', short: 'Sans-atout', colorClass: 'text-emerald-700' },
         { value: 'TA', symbol: '★', short: 'Tout-atout', colorClass: 'text-amber-600'  }
-      ],
-      availableInGameAnnouncements: ['Belote', 'Rebelote']
+      ]
     }
   },
   computed: {
-    dialogTitle() {
-      if (this.mode === 'DEPART') {
-        return 'Annonce de départ'
-      }
-
-      if (this.mode === 'COUNTER') {
-        return 'Coinche / Surcoinche'
-      }
-
-      return 'Annonce en jeu'
+    gameStatus() {
+      return this.game_manager?.gameStatus || {}
     },
-    dialogDescription() {
-      if (this.mode === 'DEPART') {
-        return "Choisis ton contrat (points + atout) ou passe ton tour."
+    isVisible() {
+      return this.game_manager.action === 'BID'
+    },
+    currentBid() {
+      return this.gameStatus.bid || null
+    },
+    currentBidPoints() {
+      const value = Number(this.currentBid?.points)
+      return Number.isFinite(value) ? value : null
+    },
+    currentBidType() {
+      return String(this.currentBid?.type ?? this.currentBid?.trump ?? '').toUpperCase()
+    },
+    minBidPoints() {
+      if (Number.isFinite(this.currentBidPoints)) {
+        return Math.min(this.maxBidPoints, this.currentBidPoints + 10)
       }
 
-      if (this.mode === 'COUNTER') {
-        return 'Tu peux coincher, surcoincher, ou passer.'
+      return 80
+    },
+    possibleActions() {
+      const explicit = this.extractAvailableActions(this.gameStatus)
+
+      if (explicit.length) {
+        return explicit
       }
 
-      return 'Choisis ton annonce en jeu, ou passe.'
+      return this.deriveActionsFromBid(this.currentBid)
+    },
+    canAnnounce() {
+      return this.possibleActions.includes('ANNOUNCE')
+    },
+    canCoinche() {
+      return this.possibleActions.includes('COINCHE')
+    },
+    canSurcoinche() {
+      return this.possibleActions.includes('SURCOINCHE')
+    },
+    canSubmit() {
+      if (this.form.actionType === 'ANNOUNCE') {
+        return this.canAnnounce
+      }
+
+      if (this.form.actionType === 'COINCHE') {
+        return this.canCoinche
+      }
+
+      if (this.form.actionType === 'SURCOINCHE') {
+        return this.canSurcoinche
+      }
+
+      return false
     },
     previousAnnonceText() {
-      if (!this.previousAnnonce) {
+      if (!this.currentBid) {
         return ''
       }
 
-      const points = Number(this.previousAnnonce.points)
-      const rawType = this.previousAnnonce.type || ''
+      const points = Number(this.currentBid.points)
+      const rawType = this.currentBidType
       const info = this.availableTypes.find((t) => t.value === rawType.toUpperCase())
       const typeDisplay = info ? `${info.symbol} ${info.short}` : rawType
 
@@ -223,151 +235,142 @@ export default {
       return typeDisplay || 'Annonce en cours'
     }
   },
+  watch: {
+    isVisible(next) {
+      if (next) {
+        this.resetForTurn()
+      }
+    },
+    possibleActions() {
+      this.syncActionSelection()
+    },
+    minBidPoints(nextMin) {
+      if (this.form.points < nextMin) {
+        this.form.points = nextMin
+      }
+    }
+  },
   methods: {
     typeInfo(value) {
       return this.availableTypes.find((t) => t.value === String(value ?? '').toUpperCase()) || null
     },
-    open(type = 'DEPART', options = {}) {
-      this.mode = this.normalizeMode(type)
-      this.previousAnnonce = null
-      this.canCoinche = false
-      this.canSurcoinche = false
-
-      if (Array.isArray(options.bidPoints) && options.bidPoints.length) {
-        const numericValues = options.bidPoints
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value))
-
-        if (numericValues.length) {
-          this.minBidPoints = Math.min(...numericValues)
-          this.maxBidPoints = Math.max(...numericValues)
-        }
-      }
-
-      if (Number.isFinite(Number(options.minPoints))) {
-        this.minBidPoints = Number(options.minPoints)
-      }
-
-      if (Number.isFinite(Number(options.maxPoints))) {
-        this.maxBidPoints = Number(options.maxPoints)
-      }
-
-      if (this.maxBidPoints < this.minBidPoints) {
-        this.maxBidPoints = this.minBidPoints
-      }
-
-      if (Array.isArray(options.availableTypes) && options.availableTypes.length) {
-        this.availableTypes = options.availableTypes
-      }
-
-      if (Array.isArray(options.inGameAnnouncements) && options.inGameAnnouncements.length) {
-        this.availableInGameAnnouncements = options.inGameAnnouncements
-      }
-
-      if (this.mode === 'DEPART') {
-        this.previousAnnonce = options.previousAnnonce || null
-
-        const hasAnnonce = Boolean(this.previousAnnonce)
-        const previousPoints = Number(this.previousAnnonce?.points)
-        const computedMin = Number.isFinite(previousPoints)
-          ? Math.min(this.maxBidPoints, previousPoints + 10)
-          : this.minBidPoints
-
-        if (Number.isFinite(previousPoints)) {
-          this.minBidPoints = computedMin
-        }
-
-        this.canCoinche = Boolean(options.canCoinche) || hasAnnonce
-        this.canSurcoinche = Boolean(options.canSurcoinche) || hasAnnonce
-        this.depart.points = this.minBidPoints
-        this.depart.type = this.availableTypes[0]?.value || 'S'
-        this.depart.actionType = 'ANNOUNCE'
-      }
-
-      if (this.mode === 'IN_GAME') {
-        this.inGame.annonce = this.availableInGameAnnouncements[0] || 'Belote'
-      }
-
-      if (this.mode === 'COUNTER') {
-        this.counter.type = 'COINCHE'
-      }
-
-      this.isOpen = true
-
-      return new Promise((resolve) => {
-        this.resolver = resolve
-      })
+    normalizeAction(value) {
+      return String(value ?? '').trim().toUpperCase()
     },
-    normalizeMode(type) {
-      const key = String(type || '').trim().toUpperCase()
+    extractAvailableActions(status) {
+      const raw = status?.availableActions || status?.possibleActions || status?.actions
 
-      if (['DEPART', 'BID_START', 'START_BID'].includes(key)) {
-        return 'DEPART'
+      if (!Array.isArray(raw)) {
+        return []
       }
 
-      if (['COUNTER', 'COINCHE', 'SURCOINCHE'].includes(key)) {
-        return 'COUNTER'
+      const allowed = ['ANNOUNCE', 'COINCHE', 'SURCOINCHE', 'PASS']
+      const normalized = raw
+        .map((action) => this.normalizeAction(action))
+        .filter((action) => allowed.includes(action))
+
+      return [...new Set(normalized)]
+    },
+    deriveActionsFromBid(bid) {
+      const actions = ['PASS']
+
+      if (!bid) {
+        actions.push('ANNOUNCE')
+        return actions
       }
 
-      return 'IN_GAME'
-    },
-    submitPass() {
-      this.resolveAndClose({ action: 'PASS', mode: this.mode })
-    },
-    submitAnnonce() {
-      if (this.mode === 'DEPART') {
-        if (this.depart.actionType === 'COINCHE' && this.canCoinche) {
-          this.resolveAndClose({
-            action: 'ANNOUNCE',
-            mode: this.mode,
-            type: 'COINCHE'
-          })
-          return
-        }
+      const bidType = this.normalizeAction(bid.type || bid.trump)
+      const isCoinched = Boolean(bid.coinched || bid.coinche || bid.isCoinched)
+      const isSurcoinched = Boolean(bid.surcoinched || bid.surcoinche || bid.isSurcoinched)
 
-        if (this.depart.actionType === 'SURCOINCHE' && this.canSurcoinche) {
-          this.resolveAndClose({
-            action: 'ANNOUNCE',
-            mode: this.mode,
-            type: 'SURCOINCHE'
-          })
-          return
-        }
+      if (bidType === 'SURCOINCHE' || isSurcoinched) {
+        return actions
+      }
 
-        this.resolveAndClose({
-          action: 'ANNOUNCE',
-          mode: this.mode,
-          points: this.depart.points,
-          type: this.depart.type
-        })
+      if (bidType === 'COINCHE' || isCoinched) {
+        actions.push('SURCOINCHE')
+        return actions
+      }
+
+      actions.push('ANNOUNCE', 'COINCHE')
+      return actions
+    },
+    firstAllowedAction() {
+      if (this.canAnnounce) {
+        return 'ANNOUNCE'
+      }
+
+      if (this.canCoinche) {
+        return 'COINCHE'
+      }
+
+      if (this.canSurcoinche) {
+        return 'SURCOINCHE'
+      }
+
+      return 'ANNOUNCE'
+    },
+    syncActionSelection() {
+      const current = this.form.actionType
+
+      if (
+        (current === 'ANNOUNCE' && this.canAnnounce)
+        || (current === 'COINCHE' && this.canCoinche)
+        || (current === 'SURCOINCHE' && this.canSurcoinche)
+      ) {
         return
       }
 
-      if (this.mode === 'COUNTER') {
-        this.resolveAndClose({
-          action: 'ANNOUNCE',
-          mode: this.mode,
-          type: this.counter.type
-        })
-        return
+      this.form.actionType = this.firstAllowedAction()
+    },
+    resetForTurn() {
+      this.form.points = this.minBidPoints
+      this.form.type = this.availableTypes[0]?.value || 'S'
+      this.form.actionType = this.firstAllowedAction()
+    },
+    selectAction(actionType) {
+      const next = this.normalizeAction(actionType)
+
+      if (next === 'ANNOUNCE' && this.canAnnounce) {
+        this.form.actionType = 'ANNOUNCE'
       }
 
-      this.resolveAndClose({
-        action: 'ANNOUNCE',
-        mode: this.mode,
-        type: this.inGame.annonce
-      })
-    },
-    resolveAndClose(payload) {
-      const resolver = this.resolver
-      this.resolver = null
-      this.isOpen = false
+      if (next === 'COINCHE' && this.canCoinche) {
+        this.form.actionType = 'COINCHE'
+      }
 
-      if (resolver) {
-        resolver(payload)
+      if (next === 'SURCOINCHE' && this.canSurcoinche) {
+        this.form.actionType = 'SURCOINCHE'
+      }
+    },
+    sendBid(payload) {
+      if (this.game_manager?.sendBid) {
+        this.game_manager.sendBid(payload)
       }
 
       this.$emit('submit', payload)
+    },
+    submitPass() {
+      this.sendBid({ action: 'PASS', type: 'PASS' })
+    },
+    submitAnnonce() {
+      if (!this.canSubmit) {
+        return
+      }
+
+      if (this.form.actionType === 'COINCHE' || this.form.actionType === 'SURCOINCHE') {
+        this.sendBid({
+          type: this.form.actionType
+        })
+        return
+      }
+
+      this.sendBid({
+        id: this.game_manager.me.id ,
+        points: this.form.points,
+        type: this.form.type,
+        trump: this.form.type
+      })
     }
   }
 }
