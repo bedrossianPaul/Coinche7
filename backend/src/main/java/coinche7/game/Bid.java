@@ -1,6 +1,5 @@
 package coinche7.game;
 
-import coinche7.game.enums.PlacementPlayer;
 import coinche7.game.enums.Suit;
 
 public class Bid {
@@ -12,7 +11,7 @@ public class Bid {
     private int points;
 
     /** Position du joueur qui a fait l'annonce */
-    private PlacementPlayer bidder;
+    private Player bidder;
 
     /** Coinche ou surcoinche */
     private boolean coinched;
@@ -22,9 +21,10 @@ public class Bid {
         this.points = 0;
         this.coinched = false;
         this.surcoinched = false;
+        bidder = null; // Valeur par défaut pour indiquer qu'aucune annonce n'a été faite
     }
 
-    public Bid(Suit suit, int points, PlacementPlayer bidder) {
+    public Bid(Suit suit, int points, Player bidder) {
         this.suit = suit;
         this.points = points;
         this.bidder = bidder;
@@ -40,8 +40,8 @@ public class Bid {
     public int getPoints() { return points; }
     public void setPoints(int points) { this.points = points; }
 
-    public PlacementPlayer getBidder() { return bidder; }
-    public void setBidder(PlacementPlayer bidder) { this.bidder = bidder; }
+    public Player getBidder() { return bidder; }
+    public void setBidder(Player bidder) { this.bidder = bidder; }
 
     public boolean isCoinched() { return coinched; }
     public void setCoinched(boolean coinched) { this.coinched = coinched; }
@@ -69,7 +69,7 @@ public class Bid {
         return "{"
                 + "\"suit\": " + (suit != null ? "\"" + suit.name() + "\"" : "null") + ", "
                 + "\"points\": " + points + ", "
-                + "\"bidder\": " + (bidder != null ? "\"" + bidder.name() + "\"" : "null") + ", "
+                + "\"bidder\": " + (bidder != null ? "\"" + bidder.getId() + "\"" : "null") + ", "
                 + "\"coinched\": " + coinched + ", "
                 + "\"surcoinched\": " + surcoinched
                 + "}";

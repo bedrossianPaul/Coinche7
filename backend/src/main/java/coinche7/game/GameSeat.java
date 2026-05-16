@@ -34,6 +34,7 @@ public class GameSeat {
     // ── Méthodes utilitaires ───────────────────────────────────────────────────
 
     public void add_player(Player player, PlacementPlayer pos) {
+        player.setPosition(pos);
         players.put(pos, player);
     }
 
@@ -72,11 +73,10 @@ public class GameSeat {
 
     /** Ordre : EAST → NORTH → WEST → SOUTH → EAST. */
     public PlacementPlayer getNextPosition(PlacementPlayer current) {
-        PlacementPlayer[] order = PlacementPlayer.values();
-        for (int i = 0; i < order.length; i++) {
-            if (order[i] == current) return order[(i + 1) % order.length];
-        }
-        return current;
+        if (current==PlacementPlayer.EAST) return PlacementPlayer.NORTH;
+        if (current==PlacementPlayer.NORTH) return PlacementPlayer.WEST;
+        if (current==PlacementPlayer.WEST) return PlacementPlayer.SOUTH;
+        return PlacementPlayer.EAST;
     }
 
     // ── Serialize (ne pas modifier) ────────────────────────────────────────────

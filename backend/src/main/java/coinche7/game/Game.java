@@ -24,7 +24,8 @@ public class Game {
         this.last_trick = new Trick();
         this.bid = new Bid();
         this.score = new GameScore();
-        this.time_remaining = 0;
+        // Valeur par défaut du compte à rebours (en secondes) — à jour avec le timeout d'enchères
+        this.time_remaining = 30;
 
 
     }

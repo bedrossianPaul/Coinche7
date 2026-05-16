@@ -10,6 +10,15 @@ const SUIT_ORDER = ['SPADE', 'HEART', 'DIAMOND', 'CLUB']
 const NON_TRUMP_RANK_ORDER = { A: 8, '10': 7, K: 6, Q: 5, J: 4, '9': 3, '8': 2, '7': 1 }
 const TRUMP_RANK_ORDER = { J: 8, '9': 7, A: 6, '10': 5, K: 4, Q: 3, '8': 2, '7': 1 }
 
+// Dictionnaire des points selon le contrat
+const CARD_POINTS = {
+    SA: { A: 19, '10': 10, K: 4, Q: 3, J: 2, '9': 0, '8': 0, '7': 0 },
+    TA: { J: 14, '9': 9, A: 6, '10': 5, K: 3, Q: 2, '8': 0, '7': 0 },
+    TRUMP: { J: 20, '9': 14, A: 11, '10': 10, K: 4, Q: 3, '8': 0, '7': 0 },
+    NON_TRUMP: { A: 11, '10': 10, K: 4, Q: 3, J: 2, '9': 0, '8': 0, '7': 0 }
+
+}
+
 const CARDS = {
     '7H': { rank: 7, suit: SUITS.HEART, img: '7_of_hearts.png' },
     '8H': { rank: 8, suit: SUITS.HEART, img: '8_of_hearts.png' },
@@ -54,55 +63,26 @@ export function useCard() {
         trumpSuit: null
     }
 
-    function normalizeCard(card) {
-        return String(card || '').trim().toUpperCase()
-    }
-
+    function normalizeCard(card) { return String(card || '').trim().toUpperCase() }
     function getRankLabel(card) {
-        const normalizedCard = normalizeCard(card)
-        if (normalizedCard.startsWith('10')) {
-            return '10'
-        }
-
-        return normalizedCard[0] || ''
+        const norm = normalizeCard(card)
+        return norm.startsWith('10') ? '10' : (norm[0] || '')
     }
-
-    function getSuitKeyFromValue(suitValue) {
-        return SUIT_KEYS.find((key) => SUITS[key] === suitValue) ?? null
+    function getSuitKeyFromValue(suitValue) { return SUIT_KEYS.find((key) => SUITS[key] === suitValue) ?? null }
+    function getSuitKey(suitValue) { return getSuitKeyFromValue(suitValue) }
+    function getCardSuit(card) {
+        const info = CARDS[normalizeCard(card)]
+        return info ? getSuitKey(info.suit) : null
     }
 
     function parseTrumpType(trumpType) {
-        if (trumpType && typeof trumpType === 'object') {
-            return parseTrumpType(trumpType.type ?? trumpType.trump ?? null)
-        }
-
-        const raw = String(trumpType ?? '')
-            .trim()
-            .toUpperCase()
-            .replace(/[-_\s]/g, '')
-
-        if (!raw || raw === 'NONE' || raw === 'NULL') {
-            return { mode: 'SA', trumpSuit: null }
-        }
-
-        if (raw === 'SA' || raw === 'SANSATOUT') {
-            return { mode: 'SA', trumpSuit: null }
-        }
-
-        if (raw === 'TA' || raw === 'TOUTATOUT') {
-            return { mode: 'TA', trumpSuit: null }
-        }
-
-        if (SUIT_KEYS.includes(raw)) {
-            return { mode: 'SUIT', trumpSuit: raw }
-        }
-
+        if (trumpType && typeof trumpType === 'object') return parseTrumpType(trumpType.type ?? trumpType.trump ?? null)
+        const raw = String(trumpType ?? '').trim().toUpperCase().replace(/[-_\s]/g, '')
+        if (!raw || raw === 'NONE' || raw === 'NULL' || raw === 'SA' || raw === 'SANSATOUT') return { mode: 'SA', trumpSuit: null }
+        if (raw === 'TA' || raw === 'TOUTATOUT') return { mode: 'TA', trumpSuit: null }
+        if (SUIT_KEYS.includes(raw)) return { mode: 'SUIT', trumpSuit: raw }
         const suitKey = getSuitKeyFromValue(raw)
-        if (suitKey) {
-            return { mode: 'SUIT', trumpSuit: suitKey }
-        }
-
-        return { mode: 'SA', trumpSuit: null }
+        return suitKey ? { mode: 'SUIT', trumpSuit: suitKey } : { mode: 'SA', trumpSuit: null }
     }
 
     function setupTrump(trumpType = 'SA') {
@@ -110,392 +90,231 @@ export function useCard() {
         return { ...trumpContext }
     }
 
-    function getTrumpContext() {
-        return { ...trumpContext }
-    }
-
-    function getCardImage(card) {
-        const cardInfo = CARDS[normalizeCard(card)];
-        if (!cardInfo) {
-            console.warn(`Unknown card: ${card}`);
-            return null;
-        }
-        return BASE_CARD_URL + cardInfo.img;
-    }
-
-    function getCardRank(card) {
-        const cardInfo = CARDS[normalizeCard(card)];
-        if (!cardInfo) {
-            console.warn(`Unknown card: ${card}`);
-            return null;
-        }
-        return cardInfo.rank;
-    }
-
-    function getSuitKey(suitValue) {
-        return getSuitKeyFromValue(suitValue)
-    }
-
-    function getCardSuit(card) {
-        const cardInfo = CARDS[normalizeCard(card)];
-        if (!cardInfo) {
-            console.warn(`Unknown card: ${card}`);
-            return null;
-        }
-        return getSuitKey(cardInfo.suit);
-    }
-
+    function getTrumpContext() { return { ...trumpContext } }
     function isTrumpSuit(suitKey) {
-        if (!suitKey) {
-            return false
-        }
-
-        if (trumpContext.mode === 'TA') {
-            return true
-        }
-
-        if (trumpContext.mode === 'SA') {
-            return false
-        }
-
+        if (!suitKey) return false
+        if (trumpContext.mode === 'TA') return true
+        if (trumpContext.mode === 'SA') return false
         return suitKey === trumpContext.trumpSuit
     }
+    function isTrumpCard(card) { return isTrumpSuit(getCardSuit(card)) }
 
-    function isTrumpCard(card) {
-        return isTrumpSuit(getCardSuit(card))
+    function getTrumpStrength(card) { return TRUMP_RANK_ORDER[getRankLabel(card)] || 0 }
+    function getNonTrumpStrength(card) { return NON_TRUMP_RANK_ORDER[getRankLabel(card)] || 0 }
+    function getCardStrength(card) { return isTrumpCard(card) ? getTrumpStrength(card) : getNonTrumpStrength(card) }
+
+    // ── NOUVEAU : CALCUL DE LA VALEUR EN POINTS D'UNE CARTE ──────────────────
+    function getCardPoints(card) {
+        const rank = getRankLabel(card)
+        if (trumpContext.mode === 'SA') return CARD_POINTS.SA[rank] || 0
+        if (trumpContext.mode === 'TA') return CARD_POINTS.TA[rank] || 0
+        if (isTrumpCard(card)) return CARD_POINTS.TRUMP[rank] || 0
+        return CARD_POINTS.NON_TRUMP[rank] || 0
     }
 
-    function getSuitSymbol(suitKey) {
-        switch (suitKey) {
-            case 'HEART':   return '♥';
-            case 'DIAMOND': return '♦';
-            case 'CLUB':    return '♣';
-            case 'SPADE':   return '♠';
-            default:        return '';
+    // ── NOUVEAU : CALCUL ABSOLU DE LA FORCE DANS LE PLI ──────────────────────
+    function getCardAbsoluteStrength(card, leadSuit) {
+        const suit = getCardSuit(card)
+        if (trumpContext.mode === 'SA') {
+            return suit === leadSuit ? getNonTrumpStrength(card) : -1
         }
-    }
-
-    function getSuitColor(suitKey) {
-        if (isTrumpSuit(suitKey)) {
-            return '#eab308';
+        if (trumpContext.mode === 'TA') {
+            return suit === leadSuit ? getTrumpStrength(card) : -1
         }
-
-        switch (suitKey) {
-            case 'HEART':
-            case 'DIAMOND':
-                return '#dc2626'; // red-600
-            case 'CLUB':
-            case 'SPADE':
-            default:
-                return '#0f172a'; // slate-900
+        // Mode couleur classique
+        if (suit === trumpContext.trumpSuit) {
+            return 100 + getTrumpStrength(card) // L'atout bat tout le reste
         }
-    }
-
-    function getCardStrength(card) {
-        const rankLabel = getRankLabel(card)
-        const useTrumpOrder = isTrumpCard(card)
-        const order = useTrumpOrder ? TRUMP_RANK_ORDER : NON_TRUMP_RANK_ORDER
-
-        return order[rankLabel] || 0
-    }
-
-    function getNonTrumpStrength(card) {
-        const rankLabel = getRankLabel(card)
-        return NON_TRUMP_RANK_ORDER[rankLabel] || 0
-    }
-
-    function getTrumpStrength(card) {
-        const rankLabel = getRankLabel(card)
-        return TRUMP_RANK_ORDER[rankLabel] || 0
-    }
-
-    function normalizeTrickCards(currentTrick = []) {
-        if (!Array.isArray(currentTrick)) {
-            return []
+        if (suit === leadSuit) {
+            return getNonTrumpStrength(card)
         }
-
-        return currentTrick
-            .map((card, index) => {
-                if (typeof card === 'string') {
-                    const value = normalizeCard(card)
-                    if (!CARDS[value]) {
-                        return null
-                    }
-
-                    return {
-                        value,
-                        playerPosition: null,
-                        playerId: null,
-                        index
-                    }
-                }
-
-                if (!card || typeof card.value !== 'string') {
-                    return null
-                }
-
-                const value = normalizeCard(card.value)
-                if (!CARDS[value]) {
-                    return null
-                }
-
-                return {
-                    value,
-                    playerPosition: typeof card.playerPosition === 'string' ? card.playerPosition.toUpperCase() : null,
-                    playerId: Number.isInteger(card.playerId) ? card.playerId : null,
-                    index
-                }
-            })
-            .filter(Boolean)
-    }
-
-    function rotateBack(position, steps) {
-        const idx = PLAYER_ORDER.indexOf(position)
-        if (idx < 0) {
-            return null
-        }
-
-        const normalizedSteps = ((steps % 4) + 4) % 4
-        return PLAYER_ORDER[(idx - normalizedSteps + 4) % 4]
-    }
-
-    function rotateForward(position, steps) {
-        const idx = PLAYER_ORDER.indexOf(position)
-        if (idx < 0) {
-            return null
-        }
-
-        const normalizedSteps = ((steps % 4) + 4) % 4
-        return PLAYER_ORDER[(idx + normalizedSteps) % 4]
-    }
-
-    function getPartnerPosition(position) {
-        return rotateForward(position, 2)
-    }
-
-    function resolvePositionFromPlayers(players = {}, playerId = null) {
-        if (!playerId || !players || typeof players !== 'object') {
-            return null
-        }
-
-        for (const position of PLAYER_ORDER) {
-            if (players[position] && players[position].id === playerId) {
-                return position
-            }
-        }
-
-        return null
-    }
-
-    function assignTrickPositions(trickCards = [], context = {}) {
-        const { players = {}, playerTurnId = null } = context
-
-        const playedCount = trickCards.length
-        if (!playedCount) {
-            return trickCards
-        }
-
-        const currentTurnPosition = resolvePositionFromPlayers(players, playerTurnId)
-        const inferredLeader = currentTurnPosition ? rotateBack(currentTurnPosition, playedCount) : null
-
-        return trickCards.map((card, order) => {
-            if (card.playerPosition) {
-                return card
-            }
-
-            if (inferredLeader) {
-                return {
-                    ...card,
-                    playerPosition: rotateForward(inferredLeader, order)
-                }
-            }
-
-            return card
-        })
+        return -1 // Défausse hors couleur
     }
 
     function compareCardsForTrick(leftCard, rightCard, leadSuit) {
-        const leftSuit = getCardSuit(leftCard)
-        const rightSuit = getCardSuit(rightCard)
-        const leftIsTrump = isTrumpCard(leftCard)
-        const rightIsTrump = isTrumpCard(rightCard)
-
-        if (leftIsTrump && !rightIsTrump) {
-            return 1
-        }
-
-        if (!leftIsTrump && rightIsTrump) {
-            return -1
-        }
-
-        if (leftIsTrump && rightIsTrump) {
-            return getTrumpStrength(leftCard) - getTrumpStrength(rightCard)
-        }
-
-        const leftIsLead = leftSuit === leadSuit
-        const rightIsLead = rightSuit === leadSuit
-
-        if (leftIsLead && !rightIsLead) {
-            return 1
-        }
-
-        if (!leftIsLead && rightIsLead) {
-            return -1
-        }
-
-        if (leftSuit === rightSuit) {
-            return getNonTrumpStrength(leftCard) - getNonTrumpStrength(rightCard)
-        }
-
-        return 0
+        return getCardAbsoluteStrength(leftCard, leadSuit) - getCardAbsoluteStrength(rightCard, leadSuit)
     }
 
     function getTrickWinner(trickCards = [], leadSuit = null) {
-        if (!Array.isArray(trickCards) || !trickCards.length || !leadSuit) {
-            return null
-        }
-
+        if (!Array.isArray(trickCards) || !trickCards.length || !leadSuit) return null
         return trickCards.reduce((winner, current) => {
-            if (!winner) {
-                return current
-            }
-
-            const result = compareCardsForTrick(current.value, winner.value, leadSuit)
-            return result > 0 ? current : winner
+            if (!winner) return current
+            return compareCardsForTrick(current.value, winner.value, leadSuit) > 0 ? current : winner
         }, null)
     }
 
-    function getSuitBucket(suitKey) {
-        if (trumpContext.mode === 'SUIT') {
-            return suitKey === trumpContext.trumpSuit ? 0 : 1
-        }
-
-        return 1
-    }
-
-    function sortCards(cards = []) {
-        const normalizedCards = cards
-            .map((card) => normalizeCard(card))
-            .filter((card) => Boolean(card))
-
-        return [...normalizedCards].sort((left, right) => {
-            const leftSuit = getCardSuit(left)
-            const rightSuit = getCardSuit(right)
-
-            const leftBucket = getSuitBucket(leftSuit)
-            const rightBucket = getSuitBucket(rightSuit)
-            if (leftBucket !== rightBucket) {
-                return leftBucket - rightBucket
-            }
-
-            const leftSuitOrder = SUIT_ORDER.indexOf(leftSuit)
-            const rightSuitOrder = SUIT_ORDER.indexOf(rightSuit)
-            if (leftSuitOrder !== rightSuitOrder) {
-                return leftSuitOrder - rightSuitOrder
-            }
-
-            const leftStrength = getCardStrength(left)
-            const rightStrength = getCardStrength(right)
-            if (leftStrength !== rightStrength) {
-                return rightStrength - leftStrength
-            }
-
-            return left.localeCompare(right)
-        })
-    }
-
+    // ── CORRECTION COMPLÈTE DE LA LOGIQUE DE JOUABILITÉ ──────────────────────
     function getUnplayableCards(handCards = [], currentTrick = [], options = {}) {
         const normalizedHand = handCards
             .map((card) => normalizeCard(card))
             .filter((card) => Boolean(card) && Boolean(CARDS[card]))
 
-        if (!normalizedHand.length || !Array.isArray(currentTrick) || !currentTrick.length) {
-            return []
-        }
-
-        if (options?.trumpType !== undefined) {
-            setupTrump(options.trumpType)
-        }
+        if (!normalizedHand.length || !Array.isArray(currentTrick) || !currentTrick.length) return []
+        if (options?.trumpType !== undefined) setupTrump(options.trumpType)
 
         const normalizedTrick = assignTrickPositions(normalizeTrickCards(currentTrick), options)
         const leadCard = normalizedTrick[0]
+        if (!leadCard) return []
 
-        if (!leadCard) {
-            return []
-        }
-
-        const leadCardValue = leadCard.value
-
-        const leadSuit = getCardSuit(leadCardValue)
-        if (!leadSuit) {
-            return []
-        }
+        const leadSuit = getCardSuit(leadCard.value)
+        if (!leadSuit) return []
 
         const hasLeadSuit = normalizedHand.some((card) => getCardSuit(card) === leadSuit)
-        if (!hasLeadSuit) {
-            if (trumpContext.mode !== 'SUIT' || !trumpContext.trumpSuit) {
-                return []
-            }
 
-            const trumpSuit = trumpContext.trumpSuit
-            const handTrumps = normalizedHand.filter((card) => getCardSuit(card) === trumpSuit)
+        // ── CAS 1 : On a la couleur demandée
+        if (hasLeadSuit) {
+            const leadCardsInHand = normalizedHand.filter((card) => getCardSuit(card) === leadSuit)
+           
+            // Règle du "monter à l'atout" (Atout classique ou Tout Atout)
+            const mustRise = (trumpContext.mode === 'TA') || (trumpContext.mode === 'SUIT' && leadSuit === trumpContext.trumpSuit)
+           
+            if (mustRise) {
+                const leadCardsInTrick = normalizedTrick.filter((c) => getCardSuit(c.value) === leadSuit)
+                const highestLeadStrength = leadCardsInTrick.reduce((max, c) => {
+                    const str = getTrumpStrength(c.value)
+                    return str > max ? str : max
+                }, -1)
 
-            if (!handTrumps.length) {
-                return []
-            }
-
-            const trickTrumps = normalizedTrick.filter((card) => getCardSuit(card.value) === trumpSuit)
-            const winner = getTrickWinner(normalizedTrick, leadSuit)
-
-            const myPosition = resolvePositionFromPlayers(options?.players ?? {}, options?.myPlayerId ?? null)
-            const partnerPosition = myPosition ? getPartnerPosition(myPosition) : null
-            const partnerWinning = Boolean(winner && partnerPosition && winner.playerPosition === partnerPosition)
-
-            if (!trickTrumps.length) {
-                if (partnerWinning) {
-                    return []
+                const overCards = leadCardsInHand.filter((card) => getTrumpStrength(card) > highestLeadStrength)
+               
+                // Si on peut monter, on doit obligatoirement jouer une de ces cartes supérieures
+                if (overCards.length > 0) {
+                    return normalizedHand.filter((card) => !overCards.includes(card))
                 }
-
-                return normalizedHand.filter((card) => getCardSuit(card) !== trumpSuit)
             }
 
-            if (partnerWinning) {
-                return []
-            }
+            // Sinon suit classique obligatoire
+            return normalizedHand.filter((card) => getCardSuit(card) !== leadSuit)
+        }
 
-            const highestTrumpInTrick = trickTrumps.reduce((best, current) => {
-                if (!best) {
-                    return current.value
-                }
+        // ── CAS 2 : On n'a pas la couleur demandée (Défausse / Coupe)
+        if (trumpContext.mode !== 'SUIT' || !trumpContext.trumpSuit) return [] // SA ou TA hors couleur = défausse libre
 
-                return getTrumpStrength(current.value) > getTrumpStrength(best) ? current.value : best
-            }, null)
+        const trumpSuit = trumpContext.trumpSuit
+        const handTrumps = normalizedHand.filter((card) => getCardSuit(card) === trumpSuit)
+        if (!handTrumps.length) return [] // Pas d'atout = défausse libre
 
-            const overTrumps = handTrumps.filter((card) => getTrumpStrength(card) > getTrumpStrength(highestTrumpInTrick))
+        const winner = getTrickWinner(normalizedTrick, leadSuit)
+        const myPosition = resolvePositionFromPlayers(options?.players ?? {}, options?.myPlayerId ?? null)
+        const partnerPosition = myPosition ? getPartnerPosition(myPosition) : null
+        const partnerWinning = Boolean(winner && partnerPosition && winner.playerPosition === partnerPosition)
 
-            if (overTrumps.length) {
-                return normalizedHand.filter((card) => !overTrumps.includes(card))
-            }
+        if (partnerWinning) return [] // Le partenaire est maître = défausse libre
 
+        // L'adversaire est maître : Obligation de couper
+        const trickTrumps = normalizedTrick.filter((card) => getCardSuit(card.value) === trumpSuit)
+       
+        if (!trickTrumps.length) {
+            // Pas encore d'atout dans le pli : n'importe quel atout est valide (on coupe)
             return normalizedHand.filter((card) => getCardSuit(card) !== trumpSuit)
         }
 
-        return normalizedHand.filter((card) => getCardSuit(card) !== leadSuit)
+        // Il y a déjà de l'atout : obligation de surcouper si possible
+        const highestTrumpInTrick = trickTrumps.reduce((best, current) => {
+            return getTrumpStrength(current.value) > getTrumpStrength(best) ? current.value : best
+        }, trickTrumps[0].value)
+
+        const overTrumps = handTrumps.filter((card) => getTrumpStrength(card) > getTrumpStrength(highestTrumpInTrick))
+       
+        if (overTrumps.length > 0) {
+            return normalizedHand.filter((card) => !overTrumps.includes(card)) // Obligation de surcouper
+        }
+
+        return normalizedHand.filter((card) => getCardSuit(card) !== trumpSuit) // Sous-coupe autorisée si on ne peut pas monter
+    }
+
+    // ── NOUVEAU : CALCULATEUR DE SCORE DE FIN DE MANCHE ──────────────────────
+    function computeRoundScore(team1Tricks = [], team2Tricks = [], lastTrickWinnerTeam) {
+        let team1Points = 0
+        let team2Points = 0
+
+        // Points de l'équipe 1
+        team1Tricks.forEach(trick => {
+            trick.forEach(card => { team1Points += getCardPoints(card) })
+        })
+
+        // Points de l'équipe 2
+        team2Tricks.forEach(trick => {
+            trick.forEach(card => { team2Points += getCardPoints(card) })
+        })
+
+        // Règle du Dix de Der
+        if (lastTrickWinnerTeam === 1) team1Points += 10
+        if (lastTrickWinnerTeam === 2) team2Points += 10
+
+        return { team1Points, team2Points }
+    }
+
+    // Fonctions de rotation existantes conservées...
+    function rotateBack(position, steps) {
+        const idx = PLAYER_ORDER.indexOf(position)
+        if (idx < 0) return null
+        return PLAYER_ORDER[(idx - (((steps % 4) + 4) % 4) + 4) % 4]
+    }
+    function rotateForward(position, steps) {
+        const idx = PLAYER_ORDER.indexOf(position)
+        if (idx < 0) return null
+        return PLAYER_ORDER[(idx + (((steps % 4) + 4) % 4)) % 4]
+    }
+    function getPartnerPosition(position) { return rotateForward(position, 2) }
+    function resolvePositionFromPlayers(players = {}, playerId = null) {
+        if (!playerId || !players || typeof players !== 'object') return null
+        for (const position of PLAYER_ORDER) {
+            if (players[position] && players[position].id === playerId) return position
+        }
+        return null
+    }
+    function assignTrickPositions(trickCards = [], context = {}) {
+        const { players = {}, playerTurnId = null } = context
+        const playedCount = trickCards.length
+        if (!playedCount) return trickCards
+        const currentTurnPosition = resolvePositionFromPlayers(players, playerTurnId)
+        const inferredLeader = currentTurnPosition ? rotateBack(currentTurnPosition, playedCount) : null
+        return trickCards.map((card, order) => {
+            if (card.playerPosition) return card
+            if (inferredLeader) return { ...card, playerPosition: rotateForward(inferredLeader, order) }
+            return card
+        })
+    }
+    function normalizeTrickCards(currentTrick = []) {
+        if (!Array.isArray(currentTrick)) return []
+        return currentTrick.map((card, index) => {
+            if (typeof card === 'string') {
+                const value = normalizeCard(card)
+                return CARDS[value] ? { value, playerPosition: null, playerId: null, index } : null
+            }
+            if (!card || typeof card.value !== 'string') return null
+            const value = normalizeCard(card.value)
+            return CARDS[value] ? {
+                value,
+                playerPosition: typeof card.playerPosition === 'string' ? card.playerPosition.toUpperCase() : null,
+                playerId: Number.isInteger(card.playerId) ? card.playerId : null,
+                index
+            } : null
+        }).filter(Boolean)
+    }
+    function getCardImage(card) { const info = CARDS[normalizeCard(card)]; return info ? BASE_CARD_URL + info.img : null }
+    function getCardRank(card) { const info = CARDS[normalizeCard(card)]; return info ? info.rank : null }
+    function getSuitSymbol(suitKey) { return '' }
+    function getSuitColor(suitKey) {
+        if (isTrumpSuit(suitKey)) return '#eab308'
+        return ['HEART', 'DIAMOND'].includes(suitKey) ? '#dc2626' : '#0f172a'
+    }
+    function getSuitBucket(suitKey) { return trumpContext.mode === 'SUIT' && suitKey === trumpContext.trumpSuit ? 0 : 1 }
+    function sortCards(cards = []) {
+        return [...cards.map(normalizeCard).filter(c => Boolean(CARDS[c]))].sort((left, right) => {
+            const leftSuit = getCardSuit(left), rightSuit = getCardSuit(right)
+            const bLeft = getSuitBucket(leftSuit), bRight = getSuitBucket(rightSuit)
+            if (bLeft !== bRight) return bLeft - bRight
+            const oLeft = SUIT_ORDER.indexOf(leftSuit), oRight = SUIT_ORDER.indexOf(rightSuit)
+            if (oLeft !== oRight) return oLeft - oRight
+            return getCardStrength(right) - getCardStrength(left)
+        })
     }
 
     return {
-        getCardImage,
-        getCardRank,
-        getCardSuit,
-        getSuitKey,
-        getSuitSymbol,
-        getSuitColor,
-        setupTrump,
-        getTrumpContext,
-        isTrumpSuit,
-        isTrumpCard,
-        sortCards,
-        getUnplayableCards
+        getCardImage, getCardRank, getCardSuit, getSuitKey, getSuitSymbol, getSuitColor,
+        setupTrump, getTrumpContext, isTrumpSuit, isTrumpCard, sortCards, getUnplayableCards,
+        getCardPoints, computeRoundScore
     }
-
 }

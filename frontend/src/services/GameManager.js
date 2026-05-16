@@ -27,7 +27,12 @@ class GameManager {
     }
 
     messageDeserializer(message) {
-        return JSON.parse(message);
+        try {
+            return JSON.parse(message);
+        } catch (error) {
+            console.error("Invalid WS JSON message:", message, error);
+            return null;
+        }
     }
 
     _updateState_(newState) {
@@ -77,7 +82,11 @@ class GameManager {
 
         // Handle incoming messages from the server
         this.socket.onmessage = (event) => {
-            const {type, payload} = this.messageDeserializer(event.data);
+            const parsed = this.messageDeserializer(event.data);
+            if (!parsed) {
+                return;
+            }
+            const {type, payload} = parsed;
             switch (type) {
                 case "STATE":
                     this._updateState_(payload);
@@ -96,6 +105,7 @@ class GameManager {
                     break;
                 default:
                     console.warn(`Unknown message type: ${type}`);
+                    console.log(`Full message: ${event.data}`);
             }
         };
     }

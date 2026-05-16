@@ -71,9 +71,6 @@
       <div :class="form.actionType !== 'ANNOUNCE' || !canAnnounce ? 'opacity-40 pointer-events-none' : ''" class="flex flex-col gap-3">
         <BidPointsInput
           v-model="form.points"
-          :min="minBidPoints"
-          :max="maxBidPoints"
-          :step="10"
         />
 
         <div class="flex flex-col gap-1">
@@ -146,7 +143,6 @@ export default {
         type: 'S',
         actionType: 'ANNOUNCE'
       },
-      maxBidPoints: 500,
       availableTypes: [
         { value: 'S',  symbol: '♠', short: 'Pique',     colorClass: 'text-slate-800' },
         { value: 'H',  symbol: '♥', short: 'Cœur',      colorClass: 'text-red-600'   },
@@ -324,7 +320,7 @@ export default {
       this.form.actionType = this.firstAllowedAction()
     },
     resetForTurn() {
-      this.form.points = this.minBidPoints
+      this.form.points = 80
       this.form.type = this.availableTypes[0]?.value || 'S'
       this.form.actionType = this.firstAllowedAction()
     },
@@ -360,12 +356,14 @@ export default {
 
       if (this.form.actionType === 'COINCHE' || this.form.actionType === 'SURCOINCHE') {
         this.sendBid({
+          action: this.form.actionType,
           type: this.form.actionType
         })
         return
       }
 
       this.sendBid({
+        action: 'ANNOUNCE',
         id: this.game_manager.me.id ,
         points: this.form.points,
         type: this.form.type,

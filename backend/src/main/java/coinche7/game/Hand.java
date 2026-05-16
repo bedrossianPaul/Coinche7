@@ -40,7 +40,7 @@ public class Hand {
         if (cards.isEmpty()) return "[]";
         StringBuilder sb = new StringBuilder();
         for (Card card : cards) {
-            sb.append(card.getCode()).append(", ");
+            sb.append("\"").append(card.getCode()).append("\"").append(", ");
         }
         sb.setLength(sb.length() - 2);
         return "[" + sb + "]";

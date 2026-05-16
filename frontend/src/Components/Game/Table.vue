@@ -15,8 +15,8 @@
                 <div v-if="gameManager.gameStatus.score" class=" bg-gray-200/40 px-4 py-2 rounded-md text-sm font-bold">
                     <div class="flex items-center gap-3">
                         <div class="flex flex-col items-start">
-                            <div class="text-sm">Nous: {{ gameManager.gameStatus.score.us }} </div>
-                            <div class="text-sm">Eux: {{ gameManager.gameStatus.score.them }} </div>
+                            <div class="text-sm">Team 1: {{ gameManager.gameStatus.score.scoreTeam1 }} </div>
+                            <div class="text-sm">Team 2: {{ gameManager.gameStatus.score.scoreTeam2 }} </div>
                         </div>
         
                     </div>

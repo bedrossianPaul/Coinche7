@@ -45,7 +45,9 @@ export default {
     }
   },
   mounted() {
-    this.gameManager = new GameManager('ws://localhost:8080/ws/game');
+    const wsUrl = this.$route.query.wsUrl ;
+    console.log("Connecting to game with wsUrl:", wsUrl);
+    this.gameManager = new GameManager(wsUrl);
     this.gameManager.connect();
 
   },

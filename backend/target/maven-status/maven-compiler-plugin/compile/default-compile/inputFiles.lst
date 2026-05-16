@@ -18,6 +18,7 @@
 /app/src/main/java/coinche7/game/enums/GameStatus.java
 /app/src/main/java/coinche7/game/enums/PlacementPlayer.java
 /app/src/main/java/coinche7/game/enums/Suit.java
+/app/src/main/java/coinche7/model/Game.java
 /app/src/main/java/coinche7/model/Token.java
 /app/src/main/java/coinche7/model/User.java
 /app/src/main/java/coinche7/repository/TokenRepository.java
@@ -26,3 +27,4 @@
 /app/src/main/java/coinche7/services/TokenService.java
 /app/src/main/java/coinche7/services/WebSocketService.java
 /app/src/main/java/coinche7/websocket/PlayerWebSocket.java
+/app/src/main/java/coinche7/websocket/WebSocketConfig.java

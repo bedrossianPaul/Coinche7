@@ -59,9 +59,15 @@ public class GameManager {
     // Outils pour la gestion du Timer
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private ScheduledFuture<?> currentTurnTimer;
+    private ScheduledFuture<?> waitingBroadcastTimer;
+    // Horodatage du début du timer d'attente (ms)
+    private long waitingStartMillis = 0L;
     
     // Temps alloué pour jouer (en secondes)
     private static final int TURN_TIMEOUT_SECONDS = 20;
+    // Durées spécifiques par phase
+    private static final int BIDDING_TIMEOUT_SECONDS = 30;
+    private static final int PLAY_TIMEOUT_SECONDS = 20;
 
     private final String ACK = "{\"type\": \"ACK\", \"payload\": {\"action\": \"PLAY\"}}";
 
@@ -117,6 +123,7 @@ public class GameManager {
         }
 
         int team = (seat == PlacementPlayer.NORTH || seat == PlacementPlayer.SOUTH) ? 1 : 2;
+        System.out.println("Player " + player.getId() + " joins as " + seat + " (Team " + team + ")");
         player.setTeam(team);
         seats.add_player(player, seat);
 
@@ -158,6 +165,12 @@ public class GameManager {
      *   5. Passe en BIDDING
      */
     private void startRound() {
+        cancelWaitingBroadcastTimer();
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         game.setMetadata(GameState.DEALING);
         broadcastGame();
         team1RoundPoints = 0;
@@ -238,6 +251,8 @@ public class GameManager {
 
     private void ask_bid(Player p){
 
+        scheduleWaitingBroadcast(GameState.BIDDING, p);
+
         String json = "{\"type\": \"REQUEST\", \"payload\": {\"action\": \"BID\"}}";
         try {
             GameSeat seats = game.getGame_seats();
@@ -254,7 +269,7 @@ public class GameManager {
                 placeBid(p, null, 0); // Force la passe
                 }
             }
-        }, TURN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }, BIDDING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
 
@@ -277,6 +292,8 @@ public class GameManager {
         if (game.getMetadata() != GameState.BIDDING) return false;
         if (!isPlayerTurn(player)) return false;
 
+        cancelWaitingBroadcastTimer();
+
         Bid currentBid = game.getBid();
         boolean isPass = (suit == null || points == 0);
 
@@ -288,10 +305,9 @@ public class GameManager {
             cancelCurrentTimer();
 
             // Enregistre la nouvelle meilleure enchère
-            PlacementPlayer bidderPos = game.getGame_seats().getPositionOf(player);
             currentBid.setSuit(suit);
             currentBid.setPoints(points);
-            currentBid.setBidder(bidderPos);
+            currentBid.setBidder(player);
             consecutivePasses = 0; // remise à zéro : le compteur repart de cette annonce
 
         } else {
@@ -339,7 +355,7 @@ public class GameManager {
         Bid bid = game.getBid();
         if (!bid.hasBid()) return false;
 
-        PlacementPlayer bidderPos = bid.getBidder();
+        PlacementPlayer bidderPos = bid.getBidder().getPosition();
         PlacementPlayer playerPos = game.getGame_seats().getPositionOf(player);
         if (sameTeam(bidderPos, playerPos)) return false;
 
@@ -360,10 +376,16 @@ public class GameManager {
      * Le premier joueur du jeu est l'annonceur.
      */
     private void endBidding() {
+        cancelWaitingBroadcastTimer();
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         Bid bid = game.getBid();
         // (hasBid() est garanti vrai ici — appelé uniquement depuis placeBid après 3 passes)
 
-        PlacementPlayer bidderPos = bid.getBidder();
+        PlacementPlayer bidderPos = bid.getBidder().getPosition();
         Player bidder = game.getGame_seats().getPlayer(bidderPos);
         game.setPlayer_turn(bidder);
 
@@ -380,6 +402,8 @@ public class GameManager {
 
 
     private void ask_card(Player p){
+
+        scheduleWaitingBroadcast(GameState.PLAYING, p);
 
         cancelCurrentTimer();
 
@@ -404,7 +428,7 @@ public class GameManager {
                     }
                 }
             }
-        }, TURN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }, PLAY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
 
@@ -423,6 +447,8 @@ public class GameManager {
         if (game.getMetadata() != GameState.PLAYING) return false;
         if (!isPlayerTurn(player)) return false;
         if (!player.getHand().contains(card)) return false;
+
+        cancelWaitingBroadcastTimer();
 
         if (!isCardPlayable(player, card)) return false;
 
@@ -759,8 +785,32 @@ public class GameManager {
     
     private void computeRoundScore() {
         // Soumission des scores calculés dynamiquement au gestionnaire de score global
-        game.getScore().addRoundToTeam1(team1RoundPoints);
-        game.getScore().addRoundToTeam2(team2RoundPoints);
+        int score_bid = game.getBid().getPoints();
+        boolean isContractFulfilled = false;
+        boolean team1IsAttacking = (game.getBid().getBidder().getPosition() == PlacementPlayer.NORTH || game.getBid().getBidder().getPosition() == PlacementPlayer.SOUTH);
+        // Bonus de coinche/surcoinche
+        if (game.getBid().isCoinched()) {
+            score_bid *= 2;
+        }
+        if (game.getBid().isSurcoinched()) {
+                score_bid *= 2;
+        }
+
+        if (team1IsAttacking) {
+            isContractFulfilled = (team1RoundPoints >= score_bid);
+            if (isContractFulfilled) {
+                game.getScore().addRoundToTeam1(score_bid); // L'équipe attaquante marque ses points + la valeur du contrat
+            } else {
+                game.getScore().addRoundToTeam2(score_bid); // L'équipe défenseur marque la valeur du contrat en cas d'échec de l'attaque
+            }
+        } else {
+            isContractFulfilled = (team2RoundPoints >= score_bid);
+            if (isContractFulfilled) {
+                game.getScore().addRoundToTeam2(score_bid); // L'équipe attaquante marque ses points + la valeur du contrat
+            } else {
+                game.getScore().addRoundToTeam1(score_bid); // L'équipe défenseur marque la valeur du contrat en cas d'échec de l'attaque
+            }
+        }
         game.getScore().commitRound(1); 
     }
 
@@ -778,7 +828,7 @@ public class GameManager {
     public void broadcastGame() {
         GameSeat seats = game.getGame_seats();
         for (PlacementPlayer pos : PlacementPlayer.values()) {
-            String json = game.serialize(pos);
+            String json = "{\"type\": \"STATE\", \"payload\":" + game.serialize(pos) + "}";
             try {
                 seats.getPlayerWebSocket(pos).broadcast(json);                
             } catch (Exception e) {
@@ -814,6 +864,48 @@ public class GameManager {
     if (currentTurnTimer != null && !currentTurnTimer.isDone()) {
         currentTurnTimer.cancel(false); // false pour ne pas interrompre brutalement si la tâche a déjà commencé
     }
+    }
+
+    private void cancelWaitingBroadcastTimer() {
+        if (waitingBroadcastTimer != null && !waitingBroadcastTimer.isDone()) {
+            waitingBroadcastTimer.cancel(false);
+        }
+        // Réinitialise l'horodatage et le compteur affiché
+        waitingStartMillis = 0L;
+        game.setTime_remaining(0);
+        
+    }
+
+    private void scheduleWaitingBroadcast(GameState expectedState, Player expectedPlayer) {
+        cancelWaitingBroadcastTimer();
+        int initialRemaining = (expectedState == GameState.BIDDING) ? BIDDING_TIMEOUT_SECONDS
+                : (expectedState == GameState.PLAYING) ? PLAY_TIMEOUT_SECONDS
+                : TURN_TIMEOUT_SECONDS;
+
+        // Mémorise le début du timer et envoie la première valeur
+        waitingStartMillis = System.currentTimeMillis();
+        game.setTime_remaining(initialRemaining);
+        broadcastGame();
+
+        waitingBroadcastTimer = scheduler.scheduleAtFixedRate(() -> {
+            synchronized (this) {
+                if (game.getMetadata() != expectedState || !isPlayerTurn(expectedPlayer)) {
+                    cancelWaitingBroadcastTimer();
+                    return;
+                }
+
+                long elapsedSec = (System.currentTimeMillis() - waitingStartMillis) / 1000L;
+                int remaining = (int) Math.max(0, initialRemaining - elapsedSec);
+                game.setTime_remaining(remaining);
+
+                // Si temps écoulé, annule le timer local (le currentTurnTimer traitera l'action)
+                if (remaining <= 0) {
+                    cancelWaitingBroadcastTimer();
+                }
+
+                broadcastGame();
+            }
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     private void send_ACK(Player p){

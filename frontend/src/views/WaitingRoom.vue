@@ -33,15 +33,19 @@ export default {
         console.error('Error creating game:', error);
       }
     },
-    // async joinGame(gameId) {
-    //   try {
-    //     const response = await axios.post(`/api/waiting-room/join?gameId=${gameId}`);
-    //     const ws_url = response.data.ws_url;
-    //     this.$router.push({ name: 'Game', params: { wsUrl: ws_url } });
-    //   } catch (error) {
-    //     console.error('Error joining game:', error);
-    //   }
-    // },
+    async joinGame(gameId) {
+      try {
+        const response = await axios.post(`/api/waiting-room/join?gameId=${gameId}`);
+        const wsPath = response.data.ws_url;
+        const protocol = 'ws';
+        const host = "localhost:8080";
+        const ws_url = `${protocol}://${host}${wsPath}`;
+        console.log('WebSocket URL:', ws_url);
+        this.$router.push({ name: 'Game', query: { wsUrl: ws_url } });
+      } catch (error) {
+        console.error('Error joining game:', error);
+      }
+    },
     async fetchGames() {
       try {
         const response = await axios.get('/api/waiting-room/list');

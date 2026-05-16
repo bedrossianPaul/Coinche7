@@ -64,10 +64,10 @@ public class Trick {
         Card south = this.cards.get(PlacementPlayer.SOUTH);
 
         return "["
-                + (east  != null ? east.getCode()  : "null") + ","
-                + (north != null ? north.getCode() : "null") + ","
-                + (west  != null ? west.getCode()  : "null") + ","
-                + (south != null ? south.getCode() : "null")
+            + (east  != null ? "\"" + east.getCode() + "\""  : "null") + ","
+            + (north != null ? "\"" + north.getCode() + "\"" : "null") + ","
+            + (west  != null ? "\"" + west.getCode() + "\""  : "null") + ","
+            + (south != null ? "\"" + south.getCode() + "\"" : "null")
                 + "]";
     }
 }

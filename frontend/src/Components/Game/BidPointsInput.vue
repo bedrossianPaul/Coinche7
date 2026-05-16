@@ -29,7 +29,7 @@ export default {
     },
     max: {
       type: Number,
-      default: 500
+      default: 160
     },
     step: {
       type: Number,

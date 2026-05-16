@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col gap-1 w-fit">
+  <div class="flex flex-col gap-1 w-fit" :class="isLocalPlayer ? 'scale-[1.03]' : ''">
         <div class="flex items-center">
             <!--Avatar | Default avatar-->
         <div class="relative flex h-16 w-16 items-center justify-center z-10">
@@ -11,11 +11,16 @@
             <img src="/icons/avatar.png" alt="Avatar" class="h-full w-full rounded-full object-cover">
           </div>
             </div>
-            <div class="w-26 h-12 bg-[rgba(255,255,255,0.3)] flex flex-col gap-1 justify-end rounded-xl px-2 py-1 relative -left-6">
+            <div class="w-26 h-12 bg-[rgba(255,255,255,0.3)] flex flex-col gap-1 justify-end rounded-xl px-2 py-1 relative -left-6" :class="isLocalPlayer ? 'bg-cyan-100/60 ring-2 ring-cyan-300 shadow-lg' : ''">
                 <!--Player name-->
-                <div class="text-sm font-bold w-full text-right truncate">{{ player.name }}</div>
+                <div class="flex items-center justify-end gap-1 w-full">
+                  <span v-if="isLocalPlayer" class="rounded-full bg-cyan-600 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm">
+                    Vous
+                  </span>
+                  <div class="text-sm font-bold text-right truncate" :class="isLocalPlayer ? 'text-cyan-950' : ''">{{ player.name }}</div>
+                </div>
                 <!--Player score-->
-                <div class="text-xs font-bold w-full text-right">{{ player.elo }}</div>
+                <div class="text-xs font-bold w-full text-right" :class="isLocalPlayer ? 'text-cyan-950' : ''">{{ player.elo }}</div>
         
             </div>
 
@@ -26,7 +31,7 @@
                 <img src="/icons/first_player.png" alt="First" class="h-full w-full object-cover">
             </div>
           </div>
-            <div v-if="game_manager.gameStatus.bid" class="relative mr-0">
+            <div v-if="game_manager.gameStatus.bid && game_manager.gameStatus.bid.bidder == player.id" class="relative mr-0">
               <div class="pointer-events-none absolute -inset-1 rounded-md bg-white/20 blur-sm ring-1 ring-white/70 shadow-lg animate-pulse"></div>
               <div class="relative rounded-md bg-gray-200/40 px-2 py-1 text-sm font-bold" :class="annonceTextColorClass">
                 {{ game_manager.gameStatus.bid.points }} {{ annonceTypeSymbol }}
@@ -56,8 +61,11 @@ export default {
     }
   },
   computed: {
+    isLocalPlayer() {
+      return this.game_manager?.me?.id != null && this.player?.id === this.game_manager.me.id
+    },
     annonceSuitKey() {
-      const rawType = this.game_manager.gameStatus.bid?.type
+      const rawType = this.game_manager.gameStatus.bid?.suit
 
       if (!rawType) {
         return null
@@ -102,7 +110,7 @@ export default {
         C: '♣'
       }
 
-      return this.annonceSuitKey ? symbols[this.annonceSuitKey] : String(this.annonce?.type || '')
+      return this.annonceSuitKey ? symbols[this.annonceSuitKey] : String(this.annonce?.suit || '')
     },
     annonceTextColorClass() {
       if (this.annonceSuitKey === 'H' || this.annonceSuitKey === 'D') {
@@ -129,25 +137,18 @@ export default {
     }
   },
   methods: {
-    playTimer(duration = 10000) {
+    // Met à jour la progression du timer en fonction du remaining (en secondes)
+    updateTimerFromRemaining(initialSeconds, remainingSeconds) {
       if (this.timerInterval) {
         clearInterval(this.timerInterval)
+        this.timerInterval = null
       }
 
-      const startTime = Date.now()
-      this.timerProgress = 100
+      const initial = Math.max(1, Number(initialSeconds) || 1)
+      const remaining = Math.max(0, Number(remainingSeconds) || 0)
 
-      this.timerInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime
-        const remaining = Math.max(0, duration - elapsed)
-
-        this.timerProgress = (remaining / duration) * 100
-
-        if (remaining <= 0) {
-          clearInterval(this.timerInterval)
-          this.timerInterval = null
-        }
-      }, 50)
+      const progress = (remaining / initial) * 100
+      this.timerProgress = Math.max(0, Math.min(100, progress))
     }
   },
   watch: {
@@ -156,7 +157,10 @@ export default {
 
       if (new_gm != null && this.player.id == new_gm.player_turn) {
         console.log('Time remaining:', new_gm.time_remaining)
-        this.playTimer(new_gm.time_remaining)
+        // Détecte la phase pour connaître le timeout initial (doit correspondre au backend)
+        const phase = (new_gm.metadata || '').toString()
+        const initial = (phase === 'BIDDING') ? 30 : (phase === 'PLAYING') ? 20 : 20
+        this.updateTimerFromRemaining(initial, new_gm.time_remaining)
       } else {
         this.timerProgress = 0
       }
