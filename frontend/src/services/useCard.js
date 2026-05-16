@@ -46,6 +46,7 @@ const CARDS = {
 }
 
 const BASE_CARD_URL = '/PNG-cards-1.3/'
+const PLAYER_ORDER = ['NORTH', 'EAST', 'SOUTH', 'WEST']
 
 export function useCard() {
     let trumpContext = {
@@ -198,6 +199,172 @@ export function useCard() {
         return order[rankLabel] || 0
     }
 
+    function getNonTrumpStrength(card) {
+        const rankLabel = getRankLabel(card)
+        return NON_TRUMP_RANK_ORDER[rankLabel] || 0
+    }
+
+    function getTrumpStrength(card) {
+        const rankLabel = getRankLabel(card)
+        return TRUMP_RANK_ORDER[rankLabel] || 0
+    }
+
+    function normalizeTrickCards(currentTrick = []) {
+        if (!Array.isArray(currentTrick)) {
+            return []
+        }
+
+        return currentTrick
+            .map((card, index) => {
+                if (typeof card === 'string') {
+                    const value = normalizeCard(card)
+                    if (!CARDS[value]) {
+                        return null
+                    }
+
+                    return {
+                        value,
+                        playerPosition: null,
+                        playerId: null,
+                        index
+                    }
+                }
+
+                if (!card || typeof card.value !== 'string') {
+                    return null
+                }
+
+                const value = normalizeCard(card.value)
+                if (!CARDS[value]) {
+                    return null
+                }
+
+                return {
+                    value,
+                    playerPosition: typeof card.playerPosition === 'string' ? card.playerPosition.toUpperCase() : null,
+                    playerId: Number.isInteger(card.playerId) ? card.playerId : null,
+                    index
+                }
+            })
+            .filter(Boolean)
+    }
+
+    function rotateBack(position, steps) {
+        const idx = PLAYER_ORDER.indexOf(position)
+        if (idx < 0) {
+            return null
+        }
+
+        const normalizedSteps = ((steps % 4) + 4) % 4
+        return PLAYER_ORDER[(idx - normalizedSteps + 4) % 4]
+    }
+
+    function rotateForward(position, steps) {
+        const idx = PLAYER_ORDER.indexOf(position)
+        if (idx < 0) {
+            return null
+        }
+
+        const normalizedSteps = ((steps % 4) + 4) % 4
+        return PLAYER_ORDER[(idx + normalizedSteps) % 4]
+    }
+
+    function getPartnerPosition(position) {
+        return rotateForward(position, 2)
+    }
+
+    function resolvePositionFromPlayers(players = {}, playerId = null) {
+        if (!playerId || !players || typeof players !== 'object') {
+            return null
+        }
+
+        for (const position of PLAYER_ORDER) {
+            if (players[position] && players[position].id === playerId) {
+                return position
+            }
+        }
+
+        return null
+    }
+
+    function assignTrickPositions(trickCards = [], context = {}) {
+        const { players = {}, playerTurnId = null } = context
+
+        const playedCount = trickCards.length
+        if (!playedCount) {
+            return trickCards
+        }
+
+        const currentTurnPosition = resolvePositionFromPlayers(players, playerTurnId)
+        const inferredLeader = currentTurnPosition ? rotateBack(currentTurnPosition, playedCount) : null
+
+        return trickCards.map((card, order) => {
+            if (card.playerPosition) {
+                return card
+            }
+
+            if (inferredLeader) {
+                return {
+                    ...card,
+                    playerPosition: rotateForward(inferredLeader, order)
+                }
+            }
+
+            return card
+        })
+    }
+
+    function compareCardsForTrick(leftCard, rightCard, leadSuit) {
+        const leftSuit = getCardSuit(leftCard)
+        const rightSuit = getCardSuit(rightCard)
+        const leftIsTrump = isTrumpCard(leftCard)
+        const rightIsTrump = isTrumpCard(rightCard)
+
+        if (leftIsTrump && !rightIsTrump) {
+            return 1
+        }
+
+        if (!leftIsTrump && rightIsTrump) {
+            return -1
+        }
+
+        if (leftIsTrump && rightIsTrump) {
+            return getTrumpStrength(leftCard) - getTrumpStrength(rightCard)
+        }
+
+        const leftIsLead = leftSuit === leadSuit
+        const rightIsLead = rightSuit === leadSuit
+
+        if (leftIsLead && !rightIsLead) {
+            return 1
+        }
+
+        if (!leftIsLead && rightIsLead) {
+            return -1
+        }
+
+        if (leftSuit === rightSuit) {
+            return getNonTrumpStrength(leftCard) - getNonTrumpStrength(rightCard)
+        }
+
+        return 0
+    }
+
+    function getTrickWinner(trickCards = [], leadSuit = null) {
+        if (!Array.isArray(trickCards) || !trickCards.length || !leadSuit) {
+            return null
+        }
+
+        return trickCards.reduce((winner, current) => {
+            if (!winner) {
+                return current
+            }
+
+            const result = compareCardsForTrick(current.value, winner.value, leadSuit)
+            return result > 0 ? current : winner
+        }, null)
+    }
+
     function getSuitBucket(suitKey) {
         if (trumpContext.mode === 'SUIT') {
             return suitKey === trumpContext.trumpSuit ? 0 : 1
@@ -237,6 +404,85 @@ export function useCard() {
         })
     }
 
+    function getUnplayableCards(handCards = [], currentTrick = [], options = {}) {
+        const normalizedHand = handCards
+            .map((card) => normalizeCard(card))
+            .filter((card) => Boolean(card) && Boolean(CARDS[card]))
+
+        if (!normalizedHand.length || !Array.isArray(currentTrick) || !currentTrick.length) {
+            return []
+        }
+
+        if (options?.trumpType !== undefined) {
+            setupTrump(options.trumpType)
+        }
+
+        const normalizedTrick = assignTrickPositions(normalizeTrickCards(currentTrick), options)
+        const leadCard = normalizedTrick[0]
+
+        if (!leadCard) {
+            return []
+        }
+
+        const leadCardValue = leadCard.value
+
+        const leadSuit = getCardSuit(leadCardValue)
+        if (!leadSuit) {
+            return []
+        }
+
+        const hasLeadSuit = normalizedHand.some((card) => getCardSuit(card) === leadSuit)
+        if (!hasLeadSuit) {
+            if (trumpContext.mode !== 'SUIT' || !trumpContext.trumpSuit) {
+                return []
+            }
+
+            const trumpSuit = trumpContext.trumpSuit
+            const handTrumps = normalizedHand.filter((card) => getCardSuit(card) === trumpSuit)
+
+            if (!handTrumps.length) {
+                return []
+            }
+
+            const trickTrumps = normalizedTrick.filter((card) => getCardSuit(card.value) === trumpSuit)
+            const winner = getTrickWinner(normalizedTrick, leadSuit)
+
+            const myPosition = resolvePositionFromPlayers(options?.players ?? {}, options?.myPlayerId ?? null)
+            const partnerPosition = myPosition ? getPartnerPosition(myPosition) : null
+            const partnerWinning = Boolean(winner && partnerPosition && winner.playerPosition === partnerPosition)
+
+            if (!trickTrumps.length) {
+                if (partnerWinning) {
+                    return []
+                }
+
+                return normalizedHand.filter((card) => getCardSuit(card) !== trumpSuit)
+            }
+
+            if (partnerWinning) {
+                return []
+            }
+
+            const highestTrumpInTrick = trickTrumps.reduce((best, current) => {
+                if (!best) {
+                    return current.value
+                }
+
+                return getTrumpStrength(current.value) > getTrumpStrength(best) ? current.value : best
+            }, null)
+
+            const overTrumps = handTrumps.filter((card) => getTrumpStrength(card) > getTrumpStrength(highestTrumpInTrick))
+
+            if (overTrumps.length) {
+                return normalizedHand.filter((card) => !overTrumps.includes(card))
+            }
+
+            return normalizedHand.filter((card) => getCardSuit(card) !== trumpSuit)
+        }
+
+        return normalizedHand.filter((card) => getCardSuit(card) !== leadSuit)
+    }
+
     return {
         getCardImage,
         getCardRank,
@@ -248,7 +494,8 @@ export function useCard() {
         getTrumpContext,
         isTrumpSuit,
         isTrumpCard,
-        sortCards
+        sortCards,
+        getUnplayableCards
     }
 
 }

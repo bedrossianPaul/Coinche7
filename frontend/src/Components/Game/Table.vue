@@ -118,17 +118,35 @@ export default {
     },
     computed: {
         displayedTrickCards() {
-            return this.gameManager.gameStatus.current_trick
-                .slice(0, 4)
-                .filter((card) => card && typeof card.value === 'string' && Number.isInteger(card.playerIndex))
+            return this.normalizeTrickCards(this.gameManager.gameStatus.current_trick)
         },
         displayedLastTrickCards() {
-            return this.gameManager.gameStatus.last_trick
-                .slice(0, 4)
-                .filter((card) => card && typeof card.value === 'string' && Number.isInteger(card.playerIndex))
+            return this.normalizeTrickCards(this.gameManager.gameStatus.last_trick)
         }
     },
     methods: {
+        normalizeTrickCards(trick) {
+            if (!Array.isArray(trick)) {
+                return []
+            }
+
+            return trick
+                .map((card, index) => {
+                    if (typeof card === 'string') {
+                        return { value: card, playerIndex: index }
+                    }
+
+                    if (card && typeof card.value === 'string') {
+                        return {
+                            value: card.value,
+                            playerIndex: Number.isInteger(card.playerIndex) ? card.playerIndex : index
+                        }
+                    }
+
+                    return null
+                })
+                .filter(Boolean)
+        },
         openLastTrickModal() {
             this.isLastTrickModalOpen = true
         },

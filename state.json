@@ -1,2 +1,5 @@
-{"type":"STATE","payload":{"metadata":"WATING","players":{"NORTH": null,"EAST":null,"SOUTH": null,"WEST": {"id": 4, "name": "Polo","elo":1500, "avatar": null, "hand": ["AH","KH"], "is_first":false}},"currentTrick":null,"last_trick":null,"player_turn":null,"time_remaining":null,"bid": {"id":4,"points":120,"type":"TA","trump":"TA"}, "score":{"us": "80", "them": "0"}}}
+{"type":"STATE","payload":{"metadata":"WATING","players":{"NORTH": null,"EAST":null,"SOUTH": null,"WEST": {"id": 4, "name": "Polo","elo":1500, "avatar": null, "hand": ["AD","KH"], "is_first":false}},"current_trick":[null,"AS", null, null],"last_trick":["KS","8S","AS","KH"],"player_turn":4,"time_remaining":10000,"bid": {"id":4,"points":120,"trump":"TA"}, "score":{"us": "80", "them": "0"}}}
 {"type": "REQUEST", "payload": {"action": "BID"}}
+{"type": "REQUEST", "payload": {"action": "PLAY"}}
+{"type": "ACK", "payload": null}
+

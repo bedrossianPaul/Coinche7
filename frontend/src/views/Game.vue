@@ -11,7 +11,16 @@
         <Table :game-manager="gameManager"/>
       </div>
       <div class="h-1/3 w-full p-1" v-if="gameManager.get_my_card().length > 0 && gameManager.gameStatus.bid">
-        <PlayerHand :cards="gameManager.get_my_card()" :trump="gameManager.gameStatus.bid.trump"/>
+        <PlayerHand
+          :cards="gameManager.get_my_card()"
+          :trump="gameManager.gameStatus.bid.trump"
+          :current-trick="gameManager.gameStatus.current_trick"
+          :players="gameManager.gameStatus.players"
+          :my-id="gameManager.me.id"
+          :player-turn-id="gameManager.gameStatus.player_turn"
+          :action="gameManager.action"
+          @play-card="handlePlayCard"
+        />
       </div>
     </div>
     <div v-else class="flex items-center justify-center h-screen">
@@ -26,7 +35,6 @@ import Table from '../Components/Game/Table.vue';
 import PlayerHand from '../Components/Game/PlayerHand.vue';
 import GlobalMessage from '../Components/GlobalMessage.vue';
 import Annonce from '../Components/Game/Annonce.vue';
-import { useCard } from '../services/useCard.js';
 import GameManager from '../services/GameManager.js';
 
 export default {
@@ -42,6 +50,17 @@ export default {
 
   },
   methods: {
+    handlePlayCard(cardCode) {
+      if (!this.gameManager || !this.gameManager.gameStatus || !cardCode) {
+        return
+      }
+
+      if (this.gameManager.gameStatus.player_turn !== this.gameManager.me.id) {
+        return
+      }
+
+      this.gameManager.sendAction(cardCode)
+    },
     async openAnnonceModal(annonce = null) {
       const result = await this.$refs.annonce.open('DEPART', {
         previousAnnonce: annonce,

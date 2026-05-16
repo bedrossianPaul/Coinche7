@@ -41,7 +41,7 @@ export default {
   name: 'Player',
   data() {
     return {
-      timerProgress: 100,
+      timerProgress: 0,
       timerInterval: null
     }
   },
@@ -150,13 +150,27 @@ export default {
       }, 50)
     }
   },
+  watch: {
+  'game_manager.gameStatus'(new_gm, old_gm) {
+      console.log('action changée', old_gm, '→', new_gm)
+
+      if (new_gm != null && this.player.id == new_gm.player_turn) {
+        console.log('Time remaining:', new_gm.time_remaining)
+        this.playTimer(new_gm.time_remaining)
+      } else {
+        this.timerProgress = 0
+      }
+    },
+    'game_manager.action'(newAction, oldAction) {
+      console.log(`Action changed: ${oldAction} → ${newAction}`)
+      clearInterval(this.timerInterval)
+      this.timerProgress = 100
+    }
+  },
   beforeUnmount() {
     if (this.timerInterval) {
       clearInterval(this.timerInterval)
     }
   },
-  mounted(){
-    this.playTimer(50000)
-  }
 }
 </script>

@@ -18,8 +18,12 @@ class GameManager {
         return [];
     }
 
+    get_timeRemaining(position){
+        return this.gameStatus.players[position].timeRemaining;
+    }
+
     messageSerializer(type, payload) {
-        return JSON.stringify({ type, payload });
+        return JSON.stringify({ 'type': type, 'payload': payload });
     }
 
     messageDeserializer(message) {
@@ -37,6 +41,9 @@ class GameManager {
             case "BID":
                 this.action = "BID";
                 break;
+            case "PLAY":
+                this.action = "PLAY";
+                break;
             default:
                 console.warn(`Unknown request action: ${request.action}`);
         }
@@ -47,6 +54,10 @@ class GameManager {
         
         console.log(`Received info from server: ${payload}`);
         return;
+    }
+
+    _handle_ack_(payload) {
+        this.action = null;
     }
 
     _handle_error_(payload) {        
@@ -76,6 +87,9 @@ class GameManager {
                     break;
                 case "INFO":
                     this._handle_info_(payload);
+                    break;
+                case "ACK":
+                    this._handle_ack_(payload);
                     break;
                 case "ERROR":
                     this._handle_error_(payload);
