@@ -139,7 +139,7 @@ export default {
   data() {
     return {
       form: {
-        points: 80,
+        points: this.game_manager.gameStatus?.bid?.points +10 || 80,
         type: 'S',
         actionType: 'ANNOUNCE'
       },
@@ -270,7 +270,8 @@ export default {
     deriveActionsFromBid(bid) {
       const actions = ['PASS']
 
-      if (!bid) {
+      // S'il n'y a pas de bid ou si le bid n'a pas de points, seul PASS et ANNOUNCE sont possibles
+      if (!bid || !bid.points || bid.points === 0) {
         actions.push('ANNOUNCE')
         return actions
       }

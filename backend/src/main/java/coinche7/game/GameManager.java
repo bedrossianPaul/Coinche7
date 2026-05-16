@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit;
 
 
 import coinche7.game.enums.*;
+import coinche7.model.User;
+import coinche7.repository.UserRepository;
 import coinche7.services.WebSocketService;
 
 /**
@@ -75,13 +77,19 @@ public class GameManager {
     private int team1RoundPoints = 0;
     private int team2RoundPoints = 0;
 
+    private final UserRepository userRepository;
+    private final coinche7.repository.GameArchiveRepository archiveRepository;
+    private boolean eloApplied = false;
+
     // ── Constructeur ───────────────────────────────────────────────────────────
 
-    public GameManager(int gameId, WebSocketService wss) {
+    public GameManager(int gameId, WebSocketService wss, UserRepository userRepository, coinche7.repository.GameArchiveRepository archiveRepository) {
         this.game = new Game(gameId, wss,this);
-        this.game.getScore().setTargetScore(2000);
+        this.game.getScore().setTargetScore(80);
         this.tricksPlayedInRound = 0;
         this.consecutivePasses = 0;
+        this.userRepository = userRepository;
+        this.archiveRepository = archiveRepository;
 
 
 
@@ -166,13 +174,13 @@ public class GameManager {
      */
     private void startRound() {
         cancelWaitingBroadcastTimer();
+        game.setMetadata(GameState.DEALING);
+        broadcastGame();
         try {
             TimeUnit.SECONDS.sleep(5);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        game.setMetadata(GameState.DEALING);
-        broadcastGame();
         team1RoundPoints = 0;
         team2RoundPoints = 0;
         tricksPlayedInRound = 0;
@@ -376,6 +384,8 @@ public class GameManager {
      * Le premier joueur du jeu est l'annonceur.
      */
     private void endBidding() {
+        game.setMetadata(GameState.PLAYING);
+        broadcastGame();
         cancelWaitingBroadcastTimer();
         try {
             TimeUnit.SECONDS.sleep(5);
@@ -390,7 +400,6 @@ public class GameManager {
         game.setPlayer_turn(bidder);
 
         game.setCurrent_trick(new Trick(bidderPos));
-        game.setMetadata(GameState.PLAYING);
         broadcastGame();
 
         ask_card(bidder);
@@ -726,6 +735,7 @@ public class GameManager {
         computeRoundScore();
 
         if (game.getScore().isGameOver()) {
+            applyGameEloRewards();
             game.setMetadata(GameState.FINISHED);
             broadcastGame();
             return;
@@ -812,6 +822,110 @@ public class GameManager {
             }
         }
         game.getScore().commitRound(1); 
+    }
+
+    private void applyGameEloRewards() {
+        if (eloApplied || userRepository == null) {
+            return;
+        }
+
+        int winnerTeam = game.getScore().getWinnerTeam();
+        if (winnerTeam == 0) {
+            return;
+        }
+
+        List<Player> team1Players = new ArrayList<>();
+        List<Player> team2Players = new ArrayList<>();
+        for (PlacementPlayer pos : PlacementPlayer.values()) {
+            Player player = game.getGame_seats().getPlayer(pos);
+            if (player == null || player.getUser() == null) {
+                continue;
+            }
+            if (pos == PlacementPlayer.NORTH || pos == PlacementPlayer.SOUTH) {
+                team1Players.add(player);
+            } else {
+                team2Players.add(player);
+            }
+        }
+
+        if (team1Players.isEmpty() || team2Players.isEmpty()) {
+            return;
+        }
+
+        int avgTeam1 = averageElo(team1Players);
+        int avgTeam2 = averageElo(team2Players);
+        int gap = Math.abs(avgTeam1 - avgTeam2);
+        int delta = Math.max(1, 10 - (gap / 100));
+
+        List<User> usersToSave = new ArrayList<>();
+
+        if (winnerTeam == 1) {
+            adjustTeamElo(team1Players, delta, usersToSave);
+            adjustTeamElo(team2Players, -delta, usersToSave);
+        } else {
+            adjustTeamElo(team2Players, delta, usersToSave);
+            adjustTeamElo(team1Players, -delta, usersToSave);
+        }
+
+        if (!usersToSave.isEmpty()) {
+            userRepository.saveAll(usersToSave);
+        }
+
+        eloApplied = true;
+        // Après application des ELO, archive la partie
+        try {
+            coinche7.model.GameArchive archive = new coinche7.model.GameArchive();
+            archive.setFinishedAt(System.currentTimeMillis());
+            archive.setWinnerTeam(winnerTeam);
+            archive.setTeam1Score(game.getScore().getScoreTeam1());
+            archive.setTeam2Score(game.getScore().getScoreTeam2());
+            archive.setTargetScore(game.getScore().getTargetScore());
+
+            java.util.List<coinche7.model.User> t1Players = new java.util.ArrayList<>();
+            java.util.List<coinche7.model.User> t2Players = new java.util.ArrayList<>();
+            for (Player player : team1Players) {
+                if (player != null && player.getUser() != null) {
+                    t1Players.add(player.getUser());
+                }
+            }
+            for (Player player : team2Players) {
+                if (player != null && player.getUser() != null) {
+                    t2Players.add(player.getUser());
+                }
+            }
+            archive.setTeam1Players(t1Players);
+            archive.setTeam2Players(t2Players);
+            if (archiveRepository != null) {
+                archiveRepository.save(archive);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private int averageElo(List<Player> players) {
+        int sum = 0;
+        for (Player player : players) {
+            User user = player.getUser();
+            int elo = user.getElo() != null ? user.getElo() : 1000;
+            sum += elo;
+        }
+        return sum / players.size();
+    }
+
+    private void adjustTeamElo(List<Player> players, int delta, List<User> usersToSave) {
+        for (Player player : players) {
+            User user = player.getUser();
+            if (user == null) {
+                continue;
+            }
+
+            int currentElo = user.getElo() != null ? user.getElo() : 1000;
+            int updatedElo = Math.max(900, currentElo + delta);
+            user.setElo(updatedElo);
+            player.setElo(updatedElo);
+            usersToSave.add(user);
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -46,12 +46,14 @@ public class UserController {
         User user = new User();
         user.setPseudo(userPayload.getPseudo());
         user.setPassword(passwordEncoder.encode(userPayload.getPassword()));
+        user.setElo(1000);
 
         User savedUser = userRepository.save(user);
 
         Map<String, Object> response = new HashMap<>();
         response.put("id", savedUser.getId());
         response.put("pseudo", savedUser.getPseudo());
+        response.put("elo", savedUser.getElo());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

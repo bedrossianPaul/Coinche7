@@ -15,6 +15,7 @@ import coinche7.game.GameManager;
 import coinche7.game.Player;
 import coinche7.game.enums.PlacementPlayer;
 import coinche7.game.enums.Suit;
+import coinche7.repository.UserRepository;
 import io.micrometer.common.lang.NonNull;
 
 public class PlayerWebSocket extends TextWebSocketHandler {
@@ -27,11 +28,14 @@ public class PlayerWebSocket extends TextWebSocketHandler {
     private PlacementPlayer pp;
 
     private String url;
+    
+    private UserRepository userRepository;
 
-    public PlayerWebSocket(GameManager gm, PlacementPlayer pp, String url){
+    public PlayerWebSocket(GameManager gm, PlacementPlayer pp, String url, UserRepository userRepository){
         this.gm = gm;
         this.pp = pp;
         this.url = url;
+        this.userRepository = userRepository;
     }
 
     @SuppressWarnings("null")
@@ -72,7 +76,7 @@ public class PlayerWebSocket extends TextWebSocketHandler {
                 case "CONNECT" ->   {
                                     String userJson = extractObject(payload, "user");
                                     int playerId = extractInt(userJson, "id", -1);
-                                    player = new Player(playerId); 
+                                    player = new Player(playerId, userRepository); 
                                     gm.joinGame(player,pp);
 
                 }

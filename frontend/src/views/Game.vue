@@ -26,6 +26,12 @@
     <div v-else class="flex items-center justify-center h-screen">
       <p class="text-2xl text-gray-500">Connexion au serveur de jeu...</p>
     </div>
+    <GameFinished
+      v-if="gameManager && gameManager.gameStatus && gameManager.gameStatus.metadata === 'FINISHED'"
+      :show="gameManager.gameStatus.metadata === 'FINISHED'"
+      :game-manager="gameManager"
+      @go-home="$router.push('/')"
+    />
   </div>
 
 </template>
@@ -36,12 +42,21 @@ import PlayerHand from '../Components/Game/PlayerHand.vue';
 import GlobalMessage from '../Components/GlobalMessage.vue';
 import Annonce from '../Components/Game/Annonce.vue';
 import GameManager from '../services/GameManager.js';
+import GameFinished from '../Components/Game/GameFinished.vue';
 
 export default {
   name: 'Game',
+  components: {
+    Table,
+    PlayerHand,
+    GlobalMessage,
+    Annonce,
+    GameFinished
+  },
   data() {
     return {
       gameManager: null,
+      waitingMessageInterval: null
     }
   },
   mounted() {
@@ -50,6 +65,57 @@ export default {
     this.gameManager = new GameManager(wsUrl);
     this.gameManager.connect();
 
+  },
+  watch: {
+    'gameManager.gameStatus.metadata'(newState, oldState) {
+      if (newState === oldState) return
+
+      console.log(`[GameState] ${oldState} → ${newState}`)
+
+      // Arrête le message WAITING permanent s'il y en a un
+      if (this.waitingMessageInterval) {
+        clearInterval(this.waitingMessageInterval)
+        this.waitingMessageInterval = null
+      }
+
+      // Attendre que le DOM soit à jour pour utiliser globalMessage
+      this.$nextTick(() => {
+        if (!this.$refs.globalMessage) return
+
+        switch (newState) {
+          case 'WAITING':
+            // Message permanent = réaffichage toutes les 3s
+            this.$refs.globalMessage.show('EN attente d\'autres joueurs...', 2800, '#79f8f6')
+            this.waitingMessageInterval = setInterval(() => {
+              if (this.$refs.globalMessage) {
+                this.$refs.globalMessage.show('EN attente d\'autres joueurs...', 2800, '#79f8f6')
+              }
+            }, 3000)
+            break
+
+          case 'DEALING':
+            this.$refs.globalMessage.show('📦 Distribution des cartes', 1200, '#a78bfa')
+            break
+
+          case 'PLAYING':
+            this.$refs.globalMessage.show('▶ Début du round', 1200, '#34d399')
+            break
+
+          case 'SCORING':
+            this.$refs.globalMessage.show('📊 Calcul des points', 1200, '#fbbf24')
+            break
+
+          case 'FINISHED':
+            this.$refs.globalMessage.show('🏁 Partie terminée', 2000, '#f87171')
+            break
+        }
+      })
+    }
+  },
+  beforeUnmount() {
+    if (this.waitingMessageInterval) {
+      clearInterval(this.waitingMessageInterval)
+    }
   },
   methods: {
     handlePlayCard(cardCode) {
@@ -93,12 +159,6 @@ export default {
       this.$refs.globalMessage.show(`${result.type}`, 1800, '#67e8f9')
       return result
     }
-  },
-  components: {
-    Table,
-    PlayerHand,
-    GlobalMessage,
-    Annonce
   }
 }
 </script>

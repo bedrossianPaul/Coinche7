@@ -26,7 +26,8 @@ public class TokenController {
         return ResponseEntity.ok().body(Map.of(
                 "message", "Token is valid",
                 "id", user.getId(),
-                "pseudo", user.getPseudo()
+                "pseudo", user.getPseudo(),
+                "elo", user.getElo()
         ));
     }
 }

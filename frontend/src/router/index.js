@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../services/useAuth'
 import Auth from '../views/Auth.vue'
+import Chat from '../views/Chat.vue'
+import Friends from '../views/Friends.vue'
+import Profile from '../views/Profile.vue'
 import Game from '../views/Game.vue'
 import Home from '../views/Home.vue'
 import WaitingRoom from '../views/WaitingRoom.vue'
@@ -24,21 +27,45 @@ const routes = [
     meta: {
       requiresAuth: true,
       label: 'Salle d\'attente',
-      icon: 'pi pi-home',
+      icon: 'pi pi-play-circle',
       order: 1
+    }
+  },
+  {
+    path: '/friends',
+    name: 'Amis',
+    component: Friends,
+    meta: {
+      requiresAuth: true,
+      label: 'Amis',
+      icon: 'pi pi-users',
+      order: 2
     }
   },
   {
     path: '/game',
     name: 'Game',
     component: Game,
+    meta: { requiresAuth: true, hideInMenu: true }
+  },
+  {
+    path: '/profile/:id',
+    name: 'Profile',
+    component: Profile,
+    meta: { requiresAuth: true, hideInMenu: true }
+  },
+  {
+    path: '/chat',
+    name: 'Chat',
+    component: Chat,
     meta: {
       requiresAuth: true,
-      label: 'Partie',
-      icon: 'pi pi-play-circle',
-      order: 2
+      label: 'Chat',
+      icon: 'pi pi-comment',
+      order: 3
     }
   },
+  
   {
     path: '/auth',
     name: 'Auth',

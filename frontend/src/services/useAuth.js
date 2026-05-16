@@ -99,7 +99,8 @@ export function useAuth() {
       if (status === 200 && data) {
         user.value = {
           id: data.id,
-          pseudo: data.pseudo
+          pseudo: data.pseudo,
+          elo: data.elo
         }
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user.value))
         return true

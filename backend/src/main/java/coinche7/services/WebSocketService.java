@@ -14,9 +14,14 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import coinche7.game.GameManager;
 import coinche7.game.enums.PlacementPlayer;
 import coinche7.websocket.PlayerWebSocket;
+import coinche7.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class WebSocketService extends TextWebSocketHandler {
+    
+    @Autowired
+    private UserRepository userRepository;
     
     private final Map<String, PlayerWebSocket> dynamicHandlers = new ConcurrentHashMap<>();
     private final Map<String, PlayerWebSocket> sessionHandlers = new ConcurrentHashMap<>();
@@ -26,7 +31,7 @@ public class WebSocketService extends TextWebSocketHandler {
         Map<PlacementPlayer, PlayerWebSocket> rep = new ConcurrentHashMap<>();
         for (PlacementPlayer position : PlacementPlayer.values()) {
             String path = "/game/" + gameId + "/player/" + position.name().toLowerCase();
-            PlayerWebSocket handler = new PlayerWebSocket(gm, position, path);
+            PlayerWebSocket handler = new PlayerWebSocket(gm, position, path, userRepository);
             dynamicHandlers.put(path,handler);
             rep.put(position,handler);
         }

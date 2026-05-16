@@ -2,12 +2,13 @@ package coinche7.game;
 
 import coinche7.game.enums.PlacementPlayer;
 import coinche7.model.User;
+import coinche7.repository.UserRepository;
 
 public class Player {
 
     private int id;
     private String name;
-    private int elo;
+    private int elo = 1000;
     private String avatar;
     private Hand hand;
     private boolean is_first;
@@ -30,15 +31,19 @@ public class Player {
         this.hand = new Hand();
     }
 
-    public Player(int id/*/, String name, int elo, String avatar, int team, User user*/) {
-        this.id = id;
-        /*
-        IDEE : ALLER CHERCHER EN BD LES INFOS A PROPOS DU JOUEUR EN FONCTION DE SON ID DE JOUEUR
-        this.name = name;
-        this.elo = elo;
-        this.avatar = avatar;
-        this.team = team;
-        this.user = user;*/
+    public Player(int userId, UserRepository userRepository) {
+        this.id = userId;
+        // Cherche les infos du joueur en base de données
+        if (userRepository != null) {
+            var userOpt = userRepository.findById((long) userId);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                this.name = user.getPseudo();
+                this.elo = user.getElo() != null ? user.getElo() : 1000;
+                this.avatar = user.getAvatarUrl();
+                this.user = user;
+            }
+        }
         this.hand = new Hand();
         this.is_first = false;
     }

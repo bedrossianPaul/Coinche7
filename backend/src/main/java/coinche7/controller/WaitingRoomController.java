@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import coinche7.game.GameManager;
 import coinche7.game.enums.PlacementPlayer;
+import coinche7.repository.UserRepository;
 import coinche7.services.WebSocketService;
 
 
@@ -22,17 +23,21 @@ public class WaitingRoomController {
 
     private final HashMap<Integer, GameManager> waiting_games = new HashMap<>();
     private final WebSocketService wss;
+    private final UserRepository userRepository;
+    private final coinche7.repository.GameArchiveRepository archiveRepository;
     private int id_index;
 
-    public WaitingRoomController(WebSocketService wss) {
+    public WaitingRoomController(WebSocketService wss, UserRepository userRepository, coinche7.repository.GameArchiveRepository archiveRepository) {
         this.wss = wss;
+        this.userRepository = userRepository;
+        this.archiveRepository = archiveRepository;
         this.id_index = 0;
     }
 
     @PostMapping("/create")
     public ResponseEntity<?> createGame() {
         
-        GameManager gameManager = new GameManager(id_index, wss);
+        GameManager gameManager = new GameManager(id_index, wss, userRepository, archiveRepository);
         waiting_games.put(gameManager.getGameId(), gameManager);
 
         HashMap<String, Object> response = new HashMap<>();

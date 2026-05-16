@@ -1,5 +1,11 @@
 <template>
   <div class="flex flex-col gap-1 w-fit" :class="isLocalPlayer ? 'scale-[1.03]' : ''">
+    <!-- Badge Équipe -->
+    <div v-if="playerTeam" class="flex justify-center mb-1">
+      <span :class="['rounded px-2 py-1 text-xs font-bold', teamBadgeColor]">
+        {{ playerTeam }}
+      </span>
+    </div>
         <div class="flex items-center">
             <!--Avatar | Default avatar-->
         <div class="relative flex h-16 w-16 items-center justify-center z-10">
@@ -63,6 +69,35 @@ export default {
   computed: {
     isLocalPlayer() {
       return this.game_manager?.me?.id != null && this.player?.id === this.game_manager.me.id
+    },
+    playerPosition() {
+      // Cherche la position du joueur en parcourant les clés de players
+      const players = this.game_manager?.gameStatus?.players || {}
+      for (const [position, playerData] of Object.entries(players)) {
+        if (playerData?.id === this.player?.id) {
+          return position.toUpperCase()
+        }
+      }
+      return null
+    },
+    playerTeam() {
+      // Team 1: NORTH, SOUTH | Team 2: EAST, WEST
+      if (this.playerPosition === 'NORTH' || this.playerPosition === 'SOUTH') {
+        return 'Team 1'
+      }
+      if (this.playerPosition === 'EAST' || this.playerPosition === 'WEST') {
+        return 'Team 2'
+      }
+      return null
+    },
+    teamBadgeColor() {
+      if (this.playerPosition === 'NORTH' || this.playerPosition === 'SOUTH') {
+        return 'bg-blue-500 text-white'
+      }
+      if (this.playerPosition === 'EAST' || this.playerPosition === 'WEST') {
+        return 'bg-red-500 text-white'
+      }
+      return 'bg-slate-400 text-white'
     },
     annonceSuitKey() {
       const rawType = this.game_manager.gameStatus.bid?.suit

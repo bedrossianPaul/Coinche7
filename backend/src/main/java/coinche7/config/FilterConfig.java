@@ -12,7 +12,7 @@ public class FilterConfig {
     public FilterRegistrationBean<AuthTokenFilter> authTokenFilterRegistration(AuthTokenFilter authTokenFilter) {
         FilterRegistrationBean<AuthTokenFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(authTokenFilter);
-        registrationBean.addUrlPatterns("/api/private/*");
+        registrationBean.addUrlPatterns("/api/private/*", "/api/friends/*", "/api/friends", "/api/messages", "/api/messages/*");
         registrationBean.setOrder(1);
         return registrationBean;
     }
