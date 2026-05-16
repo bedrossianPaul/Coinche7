@@ -6,20 +6,20 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
-import coinche7.services.WebSocketService;
-
 @Configuration
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    private final WebSocketService webSocketService;
+    @NonNull
+    private final GameWebSocketHandler gameWebSocketHandler;
 
-    public WebSocketConfig(WebSocketService webSocketService) {
-        this.webSocketService = webSocketService;
+    public WebSocketConfig(@NonNull GameWebSocketHandler gameWebSocketHandler) {
+        this.gameWebSocketHandler = gameWebSocketHandler;
     }
 
     @Override
     public void registerWebSocketHandlers(@NonNull WebSocketHandlerRegistry registry) {
-        webSocketService.setRegistry(registry);
+        registry.addHandler(gameWebSocketHandler, "/ws/game")
+                .setAllowedOriginPatterns("*");
     }
 }

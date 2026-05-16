@@ -3,6 +3,7 @@ import { useAuth } from '../services/useAuth'
 import Auth from '../views/Auth.vue'
 import Game from '../views/Game.vue'
 import Home from '../views/Home.vue'
+import WaitingRoom from '../views/WaitingRoom.vue'
 
 const routes = [
   {
@@ -12,6 +13,17 @@ const routes = [
     meta: {
       requiresAuth: true,
       label: 'Accueil',
+      icon: 'pi pi-home',
+      order: 1
+    }
+  },
+  {
+    path: '/waiting-room',
+    name: 'Salle d\'attente',
+    component: WaitingRoom,
+    meta: {
+      requiresAuth: true,
+      label: 'Salle d\'attente',
       icon: 'pi pi-home',
       order: 1
     }
