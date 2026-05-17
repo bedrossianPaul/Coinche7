@@ -85,28 +85,28 @@ export default {
         switch (newState) {
           case 'WAITING':
             // Message permanent = réaffichage toutes les 3s
-            this.$refs.globalMessage.show('EN attente d\'autres joueurs...', 2800, '#79f8f6')
+            this.$refs.globalMessage.show('En attente d\'autres joueurs...', 2800, '#79f8f6')
             this.waitingMessageInterval = setInterval(() => {
               if (this.$refs.globalMessage) {
-                this.$refs.globalMessage.show('EN attente d\'autres joueurs...', 2800, '#79f8f6')
+                this.$refs.globalMessage.show('En attente d\'autres joueurs...', 2800, '#79f8f6')
               }
             }, 3000)
             break
 
           case 'DEALING':
-            this.$refs.globalMessage.show('📦 Distribution des cartes', 1200, '#a78bfa')
+            this.$refs.globalMessage.show('Distribution des cartes', 1200, '#a78bfa')
             break
 
           case 'PLAYING':
-            this.$refs.globalMessage.show('▶ Début du round', 1200, '#34d399')
+            this.$refs.globalMessage.show('Début du round', 1200, '#34d399')
             break
 
           case 'SCORING':
-            this.$refs.globalMessage.show('📊 Calcul des points', 1200, '#fbbf24')
+            this.$refs.globalMessage.show('Calcul des points', 1200, '#fbbf24')
             break
 
           case 'FINISHED':
-            this.$refs.globalMessage.show('🏁 Partie terminée', 2000, '#f87171')
+            this.$refs.globalMessage.show('Partie terminée', 2000, '#f87171')
             break
         }
       })

@@ -4,7 +4,7 @@
     modal
     :closable="false"
     :draggable="false"
-    :style="{ width: '28rem', maxWidth: '95vw' }"
+    :style="{ width: '28rem', maxWidth: '95vw' , position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)' }"
     header="Annonce"
   >
     <div class="flex flex-col gap-4">
@@ -165,16 +165,18 @@ export default {
     },
     currentBidPoints() {
       const value = Number(this.currentBid?.points)
-      return Number.isFinite(value) ? value : null
+      return Number.isFinite(value) ? value : 0
     },
     currentBidType() {
       return String(this.currentBid?.type ?? this.currentBid?.trump ?? '').toUpperCase()
     },
+    maxBidPoints() {
+      return 250
+    },
     minBidPoints() {
-      if (Number.isFinite(this.currentBidPoints)) {
-        return Math.min(this.maxBidPoints, this.currentBidPoints + 10)
+      if (this.currentBidPoints > 0) {
+        return this.currentBidPoints + 10
       }
-
       return 80
     },
     possibleActions() {
@@ -321,7 +323,7 @@ export default {
       this.form.actionType = this.firstAllowedAction()
     },
     resetForTurn() {
-      this.form.points = 80
+      this.form.points = this.minBidPoints
       this.form.type = this.availableTypes[0]?.value || 'S'
       this.form.actionType = this.firstAllowedAction()
     },

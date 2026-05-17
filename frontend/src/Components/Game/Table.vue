@@ -99,10 +99,9 @@ export default {
         Dialog
     },
     created() {
-        const { getCardImage, getCardSuit, getSuitSymbol, getSuitColor } = useCard()
+        const { getCardImage, getCardSuit, getSuitColor } = useCard()
         this.$cardImage = getCardImage
         this.$cardSuit = getCardSuit
-        this.$suitSymbol = getSuitSymbol
         this.$suitColor = getSuitColor
     },
     data() {
@@ -159,7 +158,6 @@ export default {
                 value,
                 cardImage: this.$cardImage(value),
                 cardSuit: suit,
-                suitSymbol: this.$suitSymbol(suit),
                 color: this.$suitColor(suit)
             }
         },

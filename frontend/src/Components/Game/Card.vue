@@ -5,7 +5,7 @@
     >
         <img
             :src="cardImage"
-            :alt="`${value} ${suitSymbol}`"
+            :alt="`${value}`"
             class="h-full w-full object-cover"
         >
     </div>
@@ -25,10 +25,6 @@ export default {
             default: null
         },
         cardSuit: {
-            type: String,
-            default: null
-        },
-        suitSymbol: {
             type: String,
             default: null
         },

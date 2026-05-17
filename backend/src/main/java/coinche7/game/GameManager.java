@@ -317,6 +317,11 @@ public class GameManager {
             currentBid.setPoints(points);
             currentBid.setBidder(player);
             consecutivePasses = 0; // remise à zéro : le compteur repart de cette annonce
+            for (PlacementPlayer pos : PlacementPlayer.values()) {
+                Player p = game.getGame_seats().getPlayer(pos);
+                p.setFirst(false);
+            }
+            player.setFirst(true); // le nouvel annonceur devient le premier à jouer
 
         } else {
             // Passe

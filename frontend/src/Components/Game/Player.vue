@@ -100,7 +100,7 @@ export default {
       return 'bg-slate-400 text-white'
     },
     annonceSuitKey() {
-      const rawType = this.game_manager.gameStatus.bid?.suit
+      const rawType = this.game_manager.gameStatus.bid?.trump || this.game_manager.gameStatus.bid?.suit
 
       if (!rawType) {
         return null

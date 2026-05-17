@@ -68,6 +68,7 @@ public class Bid {
     public String serialize() {
         return "{"
                 + "\"suit\": " + (suit != null ? "\"" + suit.name() + "\"" : "null") + ", "
+                + "\"trump\": " + (suit != null ? "\"" + suit.name() + "\"" : "null") + ", "
                 + "\"points\": " + points + ", "
                 + "\"bidder\": " + (bidder != null ? "\"" + bidder.getId() + "\"" : "null") + ", "
                 + "\"coinched\": " + coinched + ", "
